@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,7 +12,9 @@ import {
   DEFAULT_MAX_ATTEMPTS,
   decodeCursor,
   encodeCursor,
+  isSeededJob,
   type CsvAnalysisOptions,
+  type DemoFailure,
   type JobEventPage,
   type JobPage,
   type JobResultView,
@@ -50,6 +54,7 @@ export class JobsService {
     const user = await this.demoUser();
     const upload = await this.uploads.require(dto.fileId);
     const options = resolveOptions(dto.options, upload.filename);
+    const executionId = randomUUID();
     const job = await this.prisma.job.create({
       data: {
         userId: user.id,
@@ -57,11 +62,21 @@ export class JobsService {
         status: 'PENDING_ENQUEUE',
         maxAttempts: DEFAULT_MAX_ATTEMPTS,
         inputKey: upload.key,
+        executionNumber: 1,
+        currentExecutionId: executionId,
         options: options as unknown as Prisma.InputJsonValue,
+        executions: {
+          create: {
+            id: executionId,
+            number: 1,
+            status: 'PENDING_ENQUEUE',
+          },
+        },
         events: {
           create: {
             eventType: 'CREATED',
-            message: 'Job recorded. Enqueue is pending.',
+            message: 'Job recorded. Enqueue of execution 1 is pending.',
+            metadata: { executionId, executionNumber: 1 },
           },
         },
       },
@@ -70,6 +85,7 @@ export class JobsService {
     try {
       await this.queue.enqueueCsvAnalysis({
         jobId: job.id,
+        executionId,
         fileKey: upload.key,
         options,
       });
@@ -94,6 +110,10 @@ export class JobsService {
       });
     }
 
+    await this.prisma.jobExecution.update({
+      where: { id: executionId },
+      data: { status: 'QUEUED' },
+    });
     const queued = await this.prisma.job.update({
       where: { id: job.id },
       data: { status: 'QUEUED' },
@@ -102,10 +122,117 @@ export class JobsService {
       data: {
         jobId: job.id,
         eventType: 'QUEUED',
-        message: 'Accepted by BullMQ',
+        message: 'Execution 1 was accepted by BullMQ.',
+        metadata: { executionId, executionNumber: 1 },
       },
     });
     await this.publish(job.id, 'QUEUED');
+    return presentJob(queued);
+  }
+
+  /**
+   * Starts a new execution of a failed job. Automatic BullMQ retries stay
+   * inside one execution and reuse its queue id. The claim is a conditional
+   * update, so two overlapping requests cannot both create an execution.
+   */
+  async retry(id: string) {
+    const existing = await this.prisma.job.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Job not found');
+    if (isSeededJob(existing.options)) {
+      throw new BadRequestException('Sample jobs are not queued and cannot be retried.');
+    }
+    if (existing.status !== 'FAILED') {
+      throw new ConflictException('Only a failed job can be retried.');
+    }
+    if (!existing.inputKey) {
+      throw new BadRequestException('This job has no stored CSV to read again.');
+    }
+
+    const options = readStoredOptions(existing.options);
+    const executionId = randomUUID();
+    const executionNumber = existing.executionNumber + 1;
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.updateMany({
+        where: { id, status: 'FAILED' },
+        data: {
+          status: 'PENDING_ENQUEUE',
+          progress: 0,
+          attempts: 0,
+          errorMessage: null,
+          startedAt: null,
+          finishedAt: null,
+          resultKey: null,
+          executionNumber,
+          currentExecutionId: executionId,
+        },
+      });
+      if (updated.count !== 1) return false;
+      await tx.jobExecution.create({
+        data: {
+          id: executionId,
+          jobId: id,
+          number: executionNumber,
+          status: 'PENDING_ENQUEUE',
+        },
+      });
+      await tx.jobEvent.create({
+        data: {
+          jobId: id,
+          eventType: 'RETRY_REQUESTED',
+          message: `Manual retry started execution ${executionNumber}. Earlier attempts stay in this history.`,
+          metadata: { executionId, executionNumber },
+        },
+      });
+      return true;
+    });
+    if (!claimed) {
+      throw new ConflictException('A retry for this job was already claimed.');
+    }
+
+    try {
+      await this.queue.enqueueCsvAnalysis({
+        jobId: id,
+        executionId,
+        fileKey: existing.inputKey,
+        options,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(`Retry enqueue failed for ${id}: ${reason}`);
+      await this.prisma.jobEvent.create({
+        data: {
+          jobId: id,
+          eventType: 'ENQUEUE_FAILED',
+          message: `Execution ${executionNumber} was saved but BullMQ did not accept it.`,
+          metadata: { reason, executionId, executionNumber },
+        },
+      });
+      await this.publish(id, 'ENQUEUE_FAILED');
+      throw new ServiceUnavailableException({
+        message: 'The retry was saved but the queue did not accept it. It was not marked queued.',
+        id,
+        status: 'PENDING_ENQUEUE',
+        executionNumber,
+      });
+    }
+
+    await this.prisma.jobExecution.update({
+      where: { id: executionId },
+      data: { status: 'QUEUED' },
+    });
+    const queued = await this.prisma.job.update({
+      where: { id },
+      data: { status: 'QUEUED' },
+    });
+    await this.prisma.jobEvent.create({
+      data: {
+        jobId: id,
+        eventType: 'QUEUED',
+        message: `Execution ${executionNumber} was accepted by BullMQ.`,
+        metadata: { executionId, executionNumber },
+      },
+    });
+    await this.publish(id, 'QUEUED');
     return presentJob(queued);
   }
 
@@ -260,5 +387,28 @@ function resolveOptions(input: CreateJobDto['options'], filename: string): CsvAn
     delimiter,
     hasHeader: input?.hasHeader ?? true,
     filename,
+    ...(input?.demoFailure ? { demoFailure: input.demoFailure } : {}),
   };
+}
+
+function readStoredOptions(value: unknown): CsvAnalysisOptions {
+  if (!value || typeof value !== 'object') {
+    throw new BadRequestException('Job options are missing.');
+  }
+  const record = value as Partial<CsvAnalysisOptions>;
+  if (typeof record.delimiter !== 'string' || typeof record.filename !== 'string') {
+    throw new BadRequestException('Job options are incomplete.');
+  }
+  const demoFailure = isDemoFailure(record.demoFailure) ? record.demoFailure : undefined;
+  return {
+    delimiter: record.delimiter,
+    hasHeader: record.hasHeader ?? true,
+    filename: record.filename,
+    ...(record.seeded ? { seeded: true } : {}),
+    ...(demoFailure ? { demoFailure } : {}),
+  };
+}
+
+function isDemoFailure(value: unknown): value is DemoFailure {
+  return value === 'transient' || value === 'exhaust-first-execution';
 }

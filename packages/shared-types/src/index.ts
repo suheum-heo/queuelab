@@ -30,21 +30,38 @@ export function isTerminalStatus(status: JobStatus): boolean {
   return status === 'COMPLETED' || status === 'FAILED';
 }
 
+export const DEMO_FAILURES = ['transient', 'exhaust-first-execution'] as const;
+
+export type DemoFailure = (typeof DEMO_FAILURES)[number];
+
 export interface CsvAnalysisOptions {
   delimiter: string;
   hasHeader: boolean;
   filename: string;
   /** True for rows inserted by the demo seed, which are not attached to BullMQ. */
   seeded?: boolean;
+  /**
+   * transient: attempt 1 throws and attempt 2 processes the file.
+   * exhaust-first-execution: every automatic attempt of execution 1 throws,
+   * and a manual retry (execution 2) processes the file.
+   */
+  demoFailure?: DemoFailure;
 }
 
 export interface CsvAnalysisPayload {
   jobId: string;
+  executionId: string;
   fileKey: string | null;
   options: CsvAnalysisOptions;
 }
 
 export const CSV_ANALYSIS_QUEUE = 'csv-analysis';
+
+/** Read at call time so a test process can use its own queue. */
+export function resolveCsvAnalysisQueue(): string {
+  const configured = process.env.CSV_ANALYSIS_QUEUE?.trim();
+  return configured || CSV_ANALYSIS_QUEUE;
+}
 export const DEFAULT_MAX_ATTEMPTS = 3;
 
 export type { AnalysisReport, InvalidSample } from './csv-analysis';
@@ -160,6 +177,8 @@ export interface JobView {
   progress: number;
   attemptsMade: number;
   maxAttempts: number;
+  executionNumber: number;
+  executionId: string | null;
   filename: string;
   seeded: boolean;
   inputKey: string | null;

@@ -20,6 +20,11 @@ export class CsvOptionsDto {
   @IsOptional()
   @IsBoolean()
   hasHeader?: boolean;
+
+  @ApiPropertyOptional({ enum: ['transient', 'exhaust-first-execution'] })
+  @IsOptional()
+  @IsIn(['transient', 'exhaust-first-execution'])
+  demoFailure?: 'transient' | 'exhaust-first-execution';
 }
 
 export class CreateJobDto {

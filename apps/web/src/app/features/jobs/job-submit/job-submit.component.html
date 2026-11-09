@@ -36,6 +36,16 @@
     <span>First row is a header</span>
   </label>
 
+  <label class="check">
+    <input type="checkbox" formControlName="transientFailure" />
+    <span>Fail the first attempt, then succeed</span>
+  </label>
+  @if (form.controls.transientFailure.value) {
+    <p class="help">
+      Attempt 1 throws once. BullMQ retries the same execution, and attempt 2 reads the file. This does not fail every attempt.
+    </p>
+  }
+
   @if (error()) {
     <p class="banner" role="alert">{{ error() }}</p>
   }

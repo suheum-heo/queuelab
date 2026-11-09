@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotImplementedException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -65,10 +64,9 @@ export class JobsController {
   }
 
   @Post(':id/retry')
-  @ApiOperation({ summary: 'Manual retry is disabled until the reliability milestone' })
-  retry(): never {
-    throw new NotImplementedException(
-      'Manual retry is not implemented yet. Transient worker errors are already retried by BullMQ.',
-    );
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Start a new execution of a failed job' })
+  retry(@Param('id', ParseUUIDPipe) id: string): Promise<JobView> {
+    return this.jobs.retry(id);
   }
 }

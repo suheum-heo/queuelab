@@ -5,7 +5,7 @@ import { findRepoRoot, storagePath } from './env';
 loadEnv({ path: resolve(findRepoRoot(__dirname), '.env') });
 
 import { createPrismaClient } from '@queuelab/database';
-import { CSV_ANALYSIS_QUEUE, type CsvAnalysisPayload } from '@queuelab/shared-types';
+import { resolveCsvAnalysisQueue, type CsvAnalysisPayload } from '@queuelab/shared-types';
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { createJobNotifier } from './job-notifier';
@@ -22,8 +22,9 @@ async function main(): Promise<void> {
   const storage = storagePath(findRepoRoot(__dirname));
   const concurrency = Number(process.env.WORKER_CONCURRENCY ?? 2);
 
+  const queueName = resolveCsvAnalysisQueue();
   const worker = new Worker<CsvAnalysisPayload>(
-    CSV_ANALYSIS_QUEUE,
+    queueName,
     (job) => processCsvJob(prisma, job, storage, notifier),
     { connection, concurrency },
   );
@@ -39,7 +40,7 @@ async function main(): Promise<void> {
     console.error('[worker]', error);
   });
 
-  console.log(`[worker] listening on ${CSV_ANALYSIS_QUEUE} (concurrency ${concurrency})`);
+  console.log(`[worker] listening on ${queueName} (concurrency ${concurrency})`);
 
   let closing = false;
   const shutdown = async () => {

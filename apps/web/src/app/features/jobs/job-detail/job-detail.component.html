@@ -15,9 +15,14 @@
         }
       </h1>
     </div>
-    <div>
+    <div class="page-head__meta">
       <p class="live" role="status">{{ live() }}</p>
       <app-status [status]="job()!.status" />
+      @if (canRetry()) {
+        <button class="button" type="button" [disabled]="retrying()" (click)="retry()">
+          {{ retrying() ? 'Starting…' : 'Retry' }}
+        </button>
+      }
     </div>
   </header>
 
@@ -40,6 +45,10 @@
         <dd>{{ job()!.type }}</dd>
       </div>
       <div>
+        <dt>Execution</dt>
+        <dd>{{ job()!.executionNumber || '—' }}</dd>
+      </div>
+      <div>
         <dt>Attempt</dt>
         <dd>{{ job()!.attemptsMade }} of {{ job()!.maxAttempts }}</dd>
       </div>
@@ -60,6 +69,9 @@
         <dd>{{ job()!.inputKey ?? '—' }}</dd>
       </div>
     </dl>
+    <p class="help">
+      An attempt is an automatic BullMQ retry of this execution. Retry starts a new execution and keeps the history below.
+    </p>
   </section>
 
   @if (report(); as report) {

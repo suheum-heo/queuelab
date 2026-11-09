@@ -16,7 +16,7 @@
     "db:seed": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database seed",
     "docker:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker-compose.yml down",
-    "test": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/worker test"
+    "test": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database build && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

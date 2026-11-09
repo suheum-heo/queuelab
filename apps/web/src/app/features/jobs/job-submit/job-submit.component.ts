@@ -24,6 +24,7 @@ export class JobSubmitComponent {
   readonly form = this.formBuilder.nonNullable.group({
     delimiter: [',', Validators.required],
     hasHeader: [true],
+    transientFailure: [false],
   });
 
   chooseFile(event: Event): void {
@@ -54,6 +55,7 @@ export class JobSubmitComponent {
             options: {
               delimiter: raw.delimiter,
               hasHeader: raw.hasHeader,
+              ...(raw.transientFailure ? { demoFailure: 'transient' as const } : {}),
             },
           })
           .subscribe({

@@ -27,8 +27,8 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 - [x] Configure BullMQ attempts and exponential backoff
 - [x] Publish a job notice after the PostgreSQL write and fan it out with Socket.IO
 - [x] Refetch the REST ledger in Angular on each notice and on reconnect
-- [ ] Implement failure classification for transient errors that succeed on a later attempt
-- [ ] Add manual retry endpoint and interface
+- [x] Classify a one-attempt transient failure separately from a permanent CSV error
+- [x] Add a manual retry that starts a new execution and preserves attempt history
 - [ ] Add pending-enqueue reconciliation
 - [ ] Test concurrency, worker crashes, and duplicate submissions
 
@@ -47,7 +47,7 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 | --- | --- | --- |
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
-| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Live updates work. Manual retry and crash recovery are still open |
+| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Live updates and manual retry work. Crash recovery is still open |
 | M4: Portfolio | Deployed app, automated tests, documentation, and demo | Documentation started |
 
 ## Engineering notes
@@ -56,8 +56,9 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 - **Why the API buffers and the worker streams.** Multipart parsing already has the body. Capping it at 10 MB keeps that buffer small. The worker uses `fs.createReadStream` and `csv-parse`, and progress is based on bytes read versus `stat` size. Counting newlines would be wrong when a quoted field contains a line break.
 - **Cents, not floats.** Amounts are summed as integer cents and divided at the end, so `10.555` and `2.25` do not drift.
 - **Permanent versus retryable.** `PermanentCsvError` becomes BullMQ `UnrecoverableError`. A missing file is permanent. Other I/O errors are thrown so the attempt budget still applies.
-- **One result row.** The report is renamed into place, then `JobResult` is upserted on `job_id`. A crash between those steps is repaired by the next attempt, which reads the CSV again from the first row.
-- **No fail-every-attempt demo.** An error that happens on every attempt only proves terminal failure. A retry that later succeeds needs a transient fault, and that test is still open.
+- **One result row.** The worker writes the report to a temporary file, then upserts `JobResult` only while this execution still owns the job. The file is renamed onto `results/{jobId}.json` after that claim. A later execution replaces the same row.
+- **Job, execution, attempt.** `jobId` is the logical row. `executionId` is one manual run and the BullMQ job id, because a failed queue id cannot be added again. `attempt` is BullMQ's automatic try inside that execution. A conditional update claims a failed job, so two retry requests create one execution. The worker upserts `JobResult` only while its execution is still current.
+- **Transient means the next attempt can succeed.** `demoFailure: transient` throws on attempt 1 only. A broken CSV is `UnrecoverableError` and stops at attempt 1. `exhaust-first-execution` fails every automatic attempt of execution 1 so a manual retry can be tested after the attempt budget is gone.
 - **No auth yet.** The upload id is an unguessable UUID. Owner checks arrive with authentication.
 - **Sockets notify, PostgreSQL decides.** BullMQ QueueEvents can fire before the ledger write is visible. The worker publishes only after that write commits. The browser throws the notice away and rereads `/jobs/:id`. Reconnect joins the room again and rereads, which covers a laptop that slept through the completion. While the socket is down, the page falls back to a two-second poll. One API process owns the Socket.IO rooms; a second API instance would need a Socket.IO Redis adapter.
 

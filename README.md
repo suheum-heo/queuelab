@@ -25,9 +25,9 @@ If enqueue fails, the API returns 503 and leaves the row pending. It never claim
 
 The worker opens the CSV as a stream. It folds each row into running totals and drops the row. It does not load the file into one string. Amounts are accumulated in integer cents. Invalid rows are counted, and at most 20 reasons are stored. A file that still has valid rows completes. An empty file, a missing required column, a broken quote, or a file where every row is invalid is a permanent error: BullMQ does not spend the remaining retries on it. A later read error that is not a missing file is thrown normally so BullMQ can retry.
 
-The worker is safe to run more than once. A completed job returns immediately. Each attempt reads the file from the start. The report is written to a temporary file and renamed over `results/{jobId}.json`, and `job_results.job_id` is unique, so a retry replaces the report instead of inserting a second result.
+The worker is safe to run more than once for the same execution. A completed execution returns immediately. Each attempt reads the CSV from the start. The report is written to a temporary file and renamed over `results/{jobId}.json` only after this execution still owns the job. `job_results.job_id` is unique, so a later success replaces the summary instead of inserting a second result.
 
-`POST /jobs/:id/retry` returns 501. BullMQ still retries an unexpected worker error up to 3 times. The earlier "fail at 34%" form option was removed: it failed on every attempt, so it could not show a retry that later succeeds. That case belongs with the manual-retry milestone.
+A job id is stable. An execution id is one manual run, and it is also the BullMQ job id. Reusing the job id would collide with the failed queue record. Automatic retries stay inside that execution: attempt 1 can throw, and attempt 2 reads the file again. `POST /jobs/:id/retry` is only for a failed job. It claims the row with `UPDATE ... WHERE status = 'FAILED'`, so a double click creates one new execution. The worker writes the final result only while its execution is still current.
 
 Required columns are `order_id`, `sku`, `quantity`, and `amount`. Header names are matched without case or spacing. Quantity must be a non-negative number. Amount may be negative. Extra columns are ignored.
 
@@ -71,8 +71,7 @@ Unit tests cover cursor pagination, row validation, and a streaming parse of a t
 
 ## Not in this slice
 
-- Manual retry, cancellation, and pending-enqueue reconciliation
-- A transient failure that succeeds on a later attempt
+- Cancellation and pending-enqueue reconciliation
 - Authentication and owner checks
 - CI, browser end-to-end tests, and deployment
 

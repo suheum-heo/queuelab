@@ -22,6 +22,7 @@ export interface CreateJobBody {
   options: {
     delimiter: string;
     hasHeader: boolean;
+    demoFailure?: 'transient';
   };
 }
 
@@ -64,5 +65,9 @@ export class JobApiService {
 
   create(body: CreateJobBody) {
     return this.http.post<JobView>(`${this.base}/jobs`, body);
+  }
+
+  retry(id: string) {
+    return this.http.post<JobView>(`${this.base}/jobs/${id}/retry`, {});
   }
 }

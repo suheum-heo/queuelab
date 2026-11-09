@@ -27,6 +27,8 @@ export class JobDetailComponent {
   readonly result = signal<JobResultView | null>(null);
   readonly error = signal<string | null>(null);
   readonly live = computed(() => (this.realtime.connected() ? 'Live' : 'Reconnecting'));
+  readonly retrying = signal(false);
+  readonly canRetry = computed(() => this.job()?.status === 'FAILED' && this.job()?.seeded === false);
   readonly report = computed(() => readReport(this.result()?.summary));
 
   constructor() {
@@ -38,6 +40,23 @@ export class JobDetailComponent {
         takeUntilDestroyed(),
       )
       .subscribe();
+  }
+
+  retry(): void {
+    const id = this.job()?.id;
+    if (!id || !this.canRetry() || this.retrying()) return;
+    this.retrying.set(true);
+    this.error.set(null);
+    this.api.retry(id).subscribe({
+      next: (job) => {
+        this.job.set(job);
+        this.retrying.set(false);
+      },
+      error: (error: unknown) => {
+        this.error.set(httpErrorMessage(error));
+        this.retrying.set(false);
+      },
+    });
   }
 
   private watch(id: string) {

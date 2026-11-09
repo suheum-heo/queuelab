@@ -7,6 +7,8 @@ export interface JobRecord {
   progress: number;
   attempts: number;
   maxAttempts: number;
+  executionNumber: number;
+  currentExecutionId: string | null;
   inputKey: string | null;
   resultKey: string | null;
   errorMessage: string | null;
@@ -24,6 +26,8 @@ export function presentJob(job: JobRecord): JobView {
     progress: job.progress,
     attemptsMade: job.attempts,
     maxAttempts: job.maxAttempts,
+    executionNumber: job.executionNumber,
+    executionId: job.currentExecutionId,
     filename: filenameFromJob(job.inputKey, job.options),
     seeded: isSeededJob(job.options),
     inputKey: job.inputKey,

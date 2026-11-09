@@ -137,7 +137,7 @@ async function main(): Promise<void> {
         events: {
           create: [
             event('CREATED', 'Sample job inserted by the seed', hoursAgo(2)),
-            event('FAILED', 'Exhausted 3 attempts. Manual retry is not available yet.', hoursAgo(1.7)),
+            event('FAILED', 'Sample failure. This row is not a live execution and cannot be retried.', hoursAgo(1.7)),
           ],
         },
       },

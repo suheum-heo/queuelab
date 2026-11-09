@@ -44,21 +44,42 @@ model Job {
   progress     Int       @default(0)
   attempts     Int       @default(0)
   maxAttempts  Int       @default(3) @map("max_attempts")
-  inputKey     String?   @map("input_key")
-  resultKey    String?   @map("result_key")
-  errorMessage String?   @map("error_message")
-  options      Json?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  startedAt    DateTime? @map("started_at")
-  finishedAt   DateTime? @map("finished_at")
+  inputKey           String?   @map("input_key")
+  resultKey          String?   @map("result_key")
+  errorMessage       String?   @map("error_message")
+  options            Json?
+  executionNumber    Int       @default(0) @map("execution_number")
+  currentExecutionId String?   @unique @map("current_execution_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
+  startedAt          DateTime? @map("started_at")
+  finishedAt         DateTime? @map("finished_at")
 
-  user   User       @relation(fields: [userId], references: [id])
-  events JobEvent[]
-  result JobResult?
+  user       User           @relation(fields: [userId], references: [id])
+  events     JobEvent[]
+  executions JobExecution[]
+  result     JobResult?
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@map("jobs")
+}
+
+model JobExecution {
+  id           String    @id @db.Uuid
+  jobId        String    @map("job_id") @db.Uuid
+  number       Int
+  status       JobStatus @default(PENDING_ENQUEUE)
+  attempts     Int       @default(0)
+  errorMessage String?   @map("error_message")
+  startedAt    DateTime? @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, number])
+  @@index([jobId, createdAt])
+  @@map("job_executions")
 }
 
 model JobEvent {
@@ -81,6 +102,7 @@ model JobResult {
   totalRows   Int      @map("total_rows")
   validRows   Int      @map("valid_rows")
   invalidRows Int      @map("invalid_rows")
+  executionId String?  @map("execution_id") @db.Uuid
   summary     Json
   createdAt   DateTime @default(now()) @map("created_at")
 

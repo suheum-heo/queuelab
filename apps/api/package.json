@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test": "nest build && tsx --test src/jobs/retry.integration.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.4.0",
@@ -31,6 +32,7 @@
     "@nestjs/schematics": "^12.0.12",
     "@types/express": "^5.0.3",
     "@types/node": "^24.10.0",
+    "tsx": "^4.23.15",
     "typescript": "6.0.3"
   }
 }
