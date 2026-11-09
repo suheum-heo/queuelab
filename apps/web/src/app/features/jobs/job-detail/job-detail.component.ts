@@ -1,12 +1,13 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { isActiveStatus, type AnalysisReport, type JobEventView, type JobResultView, type JobView } from '@queuelab/shared-types';
-import { EMPTY, forkJoin, of, timer } from 'rxjs';
-import { catchError, filter, map, switchMap, takeWhile, tap } from 'rxjs/operators';
+import { type AnalysisReport, type JobEventView, type JobResultView, type JobView } from '@queuelab/shared-types';
+import { EMPTY, asyncScheduler, forkJoin, merge, of, timer } from 'rxjs';
+import { catchError, filter, finalize, map, switchMap, tap, throttleTime } from 'rxjs/operators';
 import { httpErrorMessage } from '../../../core/api/http-error';
 import { JobApiService } from '../../../core/api/job-api.service';
+import { JobRealtimeService } from '../../../core/realtime/job-realtime.service';
 import { ProgressBarComponent } from '../../../shared/components/progress-bar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge.component';
 
@@ -17,12 +18,15 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge.co
 })
 export class JobDetailComponent {
   private readonly api = inject(JobApiService);
+  private readonly realtime = inject(JobRealtimeService);
   private readonly route = inject(ActivatedRoute);
+  private readonly connected$ = toObservable(this.realtime.connected);
 
   readonly job = signal<JobView | null>(null);
   readonly events = signal<JobEventView[]>([]);
   readonly result = signal<JobResultView | null>(null);
   readonly error = signal<string | null>(null);
+  readonly live = computed(() => (this.realtime.connected() ? 'Live' : 'Reconnecting'));
   readonly report = computed(() => readReport(this.result()?.summary));
 
   constructor() {
@@ -41,13 +45,17 @@ export class JobDetailComponent {
     this.events.set([]);
     this.result.set(null);
     this.error.set(null);
+    const stop = this.realtime.watchJob(id);
 
-    return timer(0, 1000).pipe(
+    return merge(
+      of(undefined),
+      this.realtime.notices().pipe(filter((notice) => notice.jobId === id)),
+      this.realtime.reconnected(),
+      this.connected$.pipe(switchMap((connected) => (connected ? EMPTY : timer(2_000, 2_000)))),
+    ).pipe(
+      throttleTime(200, asyncScheduler, { leading: true, trailing: true }),
       switchMap(() => this.load(id)),
-      takeWhile(() => {
-        const status = this.job()?.status;
-        return !status || isActiveStatus(status);
-      }, true),
+      finalize(() => stop()),
     );
   }
 

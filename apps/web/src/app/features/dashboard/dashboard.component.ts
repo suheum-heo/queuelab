@@ -1,12 +1,13 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import type { JobView, MetricsOverview } from '@queuelab/shared-types';
-import { forkJoin, of, timer } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { EMPTY, asyncScheduler, forkJoin, merge, of, timer } from 'rxjs';
+import { catchError, finalize, switchMap, throttleTime } from 'rxjs/operators';
 import { httpErrorMessage } from '../../core/api/http-error';
 import { JobApiService } from '../../core/api/job-api.service';
+import { JobRealtimeService } from '../../core/realtime/job-realtime.service';
 import { ProgressBarComponent } from '../../shared/components/progress-bar.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 
@@ -17,10 +18,13 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge.compo
 })
 export class DashboardComponent {
   private readonly api = inject(JobApiService);
+  private readonly realtime = inject(JobRealtimeService);
+  private readonly connected$ = toObservable(this.realtime.connected);
 
   readonly metrics = signal<MetricsOverview | null>(null);
   readonly recent = signal<JobView[]>([]);
   readonly error = signal<string | null>(null);
+  readonly live = computed(() => (this.realtime.connected() ? 'Live' : 'Reconnecting'));
   readonly processing = computed(() => {
     const metrics = this.metrics();
     if (!metrics) return null;
@@ -28,8 +32,15 @@ export class DashboardComponent {
   });
 
   constructor() {
-    timer(0, 2000)
+    const stop = this.realtime.watchLedger();
+    merge(
+      of(undefined),
+      this.realtime.notices(),
+      this.realtime.reconnected(),
+      this.connected$.pipe(switchMap((connected) => (connected ? EMPTY : timer(2_000, 2_000)))),
+    )
       .pipe(
+        throttleTime(200, asyncScheduler, { leading: true, trailing: true }),
         switchMap(() =>
           forkJoin({
             metrics: this.api.overview(),
@@ -41,6 +52,7 @@ export class DashboardComponent {
             }),
           ),
         ),
+        finalize(() => stop()),
         takeUntilDestroyed(),
       )
       .subscribe((page) => {

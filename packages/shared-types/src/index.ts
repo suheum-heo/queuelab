@@ -49,6 +49,15 @@ export const DEFAULT_MAX_ATTEMPTS = 3;
 
 export type { AnalysisReport, InvalidSample } from './csv-analysis';
 export {
+  JOB_SUBSCRIBE,
+  JOB_UNSUBSCRIBE,
+  JOB_UPDATES_CHANNEL,
+  JOB_UPDATE_EVENT,
+  LEDGER_SUBSCRIBE,
+  readJobUpdateNotice,
+} from './job-notice';
+export type { JobUpdateNotice } from './job-notice';
+export {
   CSV_REQUIRED_COLUMNS,
   CsvAggregator,
   MAX_INVALID_SAMPLES,

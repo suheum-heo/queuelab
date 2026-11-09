@@ -6,11 +6,13 @@ loadEnv({ path: resolve(findRepoRoot(__dirname), '.env') });
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.setGlobalPrefix('api/v1');
   app.enableCors({
     origin: process.env.WEB_ORIGIN ?? 'http://localhost:4200',
@@ -28,7 +30,7 @@ async function bootstrap(): Promise<void> {
     new DocumentBuilder()
       .setTitle('QueueLab API')
       .setDescription(
-        'Accepts CSV analysis jobs, records them in PostgreSQL, and enqueues them on BullMQ. A job is reported as queued only after Redis accepts it.',
+        'Accepts CSV analysis jobs, records them in PostgreSQL, and enqueues them on BullMQ. A job is reported as queued only after Redis accepts it. Socket.IO emits a notice after that write; the notice is not the job state.',
       )
       .setVersion('0.1.0')
       .build(),

@@ -4,6 +4,7 @@ import { Prisma, type PrismaClient } from '@queuelab/database';
 import { DEFAULT_MAX_ATTEMPTS, type CsvAnalysisPayload } from '@queuelab/shared-types';
 import { Job, UnrecoverableError } from 'bullmq';
 import { analyzeCsvFile, permanentCsvError } from './csv/analyze-file';
+import type { JobNotifier } from './job-notifier';
 
 const UPLOAD_KEY =
   /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.csv$/i;
@@ -18,6 +19,7 @@ export async function processCsvJob(
   prisma: PrismaClient,
   job: Job<CsvAnalysisPayload>,
   storageRoot: string,
+  notifier: JobNotifier,
 ): Promise<void> {
   const payload = job.data;
   if (!payload?.jobId) {
@@ -61,6 +63,7 @@ export async function processCsvJob(
       metadata: { attempt, fileKey: payload.fileKey },
     },
   });
+  await notifier.publish(record.id, 'PROCESSING');
 
   const announced = new Set<number>();
   let analysis;
@@ -79,6 +82,7 @@ export async function processCsvJob(
         await job.updateProgress(progress);
         if (progress < 100) {
           await recordMilestone(prisma, record.id, progress, processedRows, announced);
+          await notifier.publish(record.id, 'PROGRESS');
         }
       },
     );
@@ -138,12 +142,14 @@ export async function processCsvJob(
       },
     },
   });
+  await notifier.publish(record.id, 'COMPLETED');
 }
 
 export async function markFailed(
   prisma: PrismaClient,
   job: Job<CsvAnalysisPayload>,
   error: Error,
+  notifier: JobNotifier,
 ): Promise<void> {
   const jobId = job.data?.jobId;
   if (!jobId) return;
@@ -174,6 +180,7 @@ export async function markFailed(
       metadata: { attempt: job.attemptsMade, willRetry },
     },
   });
+  await notifier.publish(jobId, willRetry ? 'RETRYING' : 'FAILED');
 }
 
 async function recordMilestone(

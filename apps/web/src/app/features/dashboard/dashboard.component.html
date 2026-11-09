@@ -3,7 +3,7 @@
     <p class="eyebrow">Overview</p>
     <h1>Jobs in the ledger</h1>
   </div>
-  <p class="live" [class.is-error]="error()" role="status">{{ error() ?? 'Refreshing every 2 seconds' }}</p>
+  <p class="live" [class.is-error]="error()" role="status">{{ error() ?? live() }}</p>
 </header>
 
 <section class="metrics" aria-label="Job counts">

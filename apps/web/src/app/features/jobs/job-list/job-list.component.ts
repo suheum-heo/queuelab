@@ -1,12 +1,14 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { JOB_STATUSES, type JobStatus, type JobView } from '@queuelab/shared-types';
-import { timer } from 'rxjs';
+import { EMPTY, asyncScheduler, merge, of, timer } from 'rxjs';
+import { finalize, switchMap, throttleTime } from 'rxjs/operators';
 import { JobApiService } from '../../../core/api/job-api.service';
 import { httpErrorMessage } from '../../../core/api/http-error';
+import { JobRealtimeService } from '../../../core/realtime/job-realtime.service';
 import { ProgressBarComponent } from '../../../shared/components/progress-bar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge.component';
 
@@ -28,7 +30,9 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 })
 export class JobListComponent {
   private readonly api = inject(JobApiService);
+  private readonly realtime = inject(JobRealtimeService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly connected$ = toObservable(this.realtime.connected);
 
   readonly statuses = JOB_STATUSES;
   readonly statusLabel = STATUS_LABELS;
@@ -36,6 +40,7 @@ export class JobListComponent {
   readonly nextCursor = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly loading = signal(false);
+  readonly live = computed(() => (this.realtime.connected() ? 'Live' : 'Reconnecting'));
   private readonly expanded = signal(false);
   private requestId = 0;
   readonly filters = this.formBuilder.nonNullable.group({
@@ -44,8 +49,18 @@ export class JobListComponent {
   });
 
   constructor() {
-    timer(0, 2000)
-      .pipe(takeUntilDestroyed())
+    const stop = this.realtime.watchLedger();
+    merge(
+      of(undefined),
+      this.realtime.notices(),
+      this.realtime.reconnected(),
+      this.connected$.pipe(switchMap((connected) => (connected ? EMPTY : timer(2_000, 2_000)))),
+    )
+      .pipe(
+        throttleTime(200, asyncScheduler, { leading: true, trailing: true }),
+        finalize(() => stop()),
+        takeUntilDestroyed(),
+      )
       .subscribe(() => {
         if (!this.expanded()) this.fetch(false);
       });

@@ -1,18 +1,18 @@
 # QueueLab
 
-QueueLab accepts a CSV analysis job, records it in PostgreSQL, and lets a separate worker finish it through Redis and BullMQ. The Angular app uploads the file and polls the ledger for progress.
+QueueLab accepts a CSV analysis job, records it in PostgreSQL, and lets a separate worker finish it through Redis and BullMQ. The Angular app uploads the file and follows the ledger through a socket.
 
 ## Architecture
 
 ```text
-Angular  --HTTP-->  NestJS API  --enqueue-->  Redis / BullMQ  -->  Worker
-                      |                                          |
-                      +-------------- PostgreSQL ----------------+
-                      |
-                      +--------- storage/ (CSV + report JSON) ---+
+Angular --HTTP--> NestJS API --enqueue--> Redis / BullMQ --> Worker
+   ^                |                         |               |
+   |                +-------- PostgreSQL -----+---------------+
+   |                |                                         |
+   +-- Socket.IO ---+<----- job notice ---- Redis pub/sub ----+
 ```
 
-BullMQ owns execution: locks, attempts, and backoff. PostgreSQL owns the queryable history: status, progress, events, and result rows. Those two writes are not one transaction.
+BullMQ owns execution: locks, attempts, and backoff. PostgreSQL owns the queryable history: status, progress, events, and result rows. Those two writes are not one transaction. After a durable write, the API or worker publishes a small notice. Socket.IO forwards that notice to open pages. The page then rereads the job from the REST API. A reconnect does the same reread, so a missed notice does not become the state of the screen.
 
 Creating a job:
 
@@ -71,7 +71,6 @@ Unit tests cover cursor pagination, row validation, and a streaming parse of a t
 
 ## Not in this slice
 
-- Socket.IO live events
 - Manual retry, cancellation, and pending-enqueue reconciliation
 - A transient failure that succeeds on a later attempt
 - Authentication and owner checks

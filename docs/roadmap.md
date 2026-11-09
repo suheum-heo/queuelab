@@ -25,8 +25,8 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 ## Week 3 — Real-time and reliability
 
 - [x] Configure BullMQ attempts and exponential backoff
-- [ ] Implement QueueEvents listener and Socket.IO gateway
-- [ ] Add client-side subscriptions and reconnect synchronization
+- [x] Publish a job notice after the PostgreSQL write and fan it out with Socket.IO
+- [x] Refetch the REST ledger in Angular on each notice and on reconnect
 - [ ] Implement failure classification for transient errors that succeed on a later attempt
 - [ ] Add manual retry endpoint and interface
 - [ ] Add pending-enqueue reconciliation
@@ -47,7 +47,7 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 | --- | --- | --- |
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
-| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Automatic retry works; manual retry does not |
+| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Live updates work. Manual retry and crash recovery are still open |
 | M4: Portfolio | Deployed app, automated tests, documentation, and demo | Documentation started |
 
 ## Engineering notes
@@ -59,4 +59,5 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 - **One result row.** The report is renamed into place, then `JobResult` is upserted on `job_id`. A crash between those steps is repaired by the next attempt, which reads the CSV again from the first row.
 - **No fail-every-attempt demo.** An error that happens on every attempt only proves terminal failure. A retry that later succeeds needs a transient fault, and that test is still open.
 - **No auth yet.** The upload id is an unguessable UUID. Owner checks arrive with authentication.
+- **Sockets notify, PostgreSQL decides.** BullMQ QueueEvents can fire before the ledger write is visible. The worker publishes only after that write commits. The browser throws the notice away and rereads `/jobs/:id`. Reconnect joins the room again and rereads, which covers a laptop that slept through the completion. While the socket is down, the page falls back to a two-second poll. One API process owns the Socket.IO rooms; a second API instance would need a Socket.IO Redis adapter.
 

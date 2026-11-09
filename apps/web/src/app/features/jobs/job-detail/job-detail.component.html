@@ -15,7 +15,10 @@
         }
       </h1>
     </div>
-    <app-status [status]="job()!.status" />
+    <div>
+      <p class="live" role="status">{{ live() }}</p>
+      <app-status [status]="job()!.status" />
+    </div>
   </header>
 
   @if (job()!.seeded) {

@@ -17,6 +17,7 @@ import {
 } from '@queuelab/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
+import { JobUpdatesService } from '../realtime/job-updates.service';
 import { StorageService } from '../storage/storage.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -32,6 +33,7 @@ export class JobsService {
     private readonly queue: QueueService,
     private readonly storage: StorageService,
     private readonly uploads: UploadsService,
+    private readonly updates: JobUpdatesService,
   ) {}
 
   /**
@@ -82,6 +84,7 @@ export class JobsService {
           metadata: { reason },
         },
       });
+      await this.publish(job.id, 'ENQUEUE_FAILED');
       throw new ServiceUnavailableException({
         message: 'The job was saved but the queue did not accept it. It was not marked queued.',
         id: job.id,
@@ -102,6 +105,7 @@ export class JobsService {
         message: 'Accepted by BullMQ',
       },
     });
+    await this.publish(job.id, 'QUEUED');
     return presentJob(queued);
   }
 
@@ -217,6 +221,15 @@ export class JobsService {
       return decodeCursor(cursor);
     } catch {
       throw new BadRequestException('Invalid cursor');
+    }
+  }
+
+  private async publish(jobId: string, eventType: string): Promise<void> {
+    try {
+      await this.updates.publish(jobId, eventType);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Job ${jobId} was saved, but the live notice was not published: ${reason}`);
     }
   }
 

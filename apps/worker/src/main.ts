@@ -8,6 +8,7 @@ import { createPrismaClient } from '@queuelab/database';
 import { CSV_ANALYSIS_QUEUE, type CsvAnalysisPayload } from '@queuelab/shared-types';
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { createJobNotifier } from './job-notifier';
 import { markFailed, processCsvJob } from './process-csv-job';
 
 async function main(): Promise<void> {
@@ -17,18 +18,19 @@ async function main(): Promise<void> {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
   const prisma = createPrismaClient(databaseUrl);
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const notifier = createJobNotifier(redisUrl);
   const storage = storagePath(findRepoRoot(__dirname));
   const concurrency = Number(process.env.WORKER_CONCURRENCY ?? 2);
 
   const worker = new Worker<CsvAnalysisPayload>(
     CSV_ANALYSIS_QUEUE,
-    (job) => processCsvJob(prisma, job, storage),
+    (job) => processCsvJob(prisma, job, storage, notifier),
     { connection, concurrency },
   );
 
   worker.on('failed', (job, error) => {
     if (!job) return;
-    void markFailed(prisma, job, error).catch((recordError: unknown) => {
+    void markFailed(prisma, job, error, notifier).catch((recordError: unknown) => {
       console.error('[worker] could not record failure', recordError);
     });
   });
@@ -45,6 +47,7 @@ async function main(): Promise<void> {
     closing = true;
     console.log('[worker] shutting down');
     await worker.close();
+    await notifier.close();
     await prisma.$disconnect();
     await connection.quit();
     process.exit(0);

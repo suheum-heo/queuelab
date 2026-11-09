@@ -12,7 +12,7 @@
       <a routerLink="/jobs" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">Jobs</a>
       <a routerLink="/jobs/new" routerLinkActive="is-active">New job</a>
     </nav>
-    <p class="sidebar__note">PostgreSQL keeps the ledger. Redis delivers the work. This view polls until sockets arrive.</p>
+    <p class="sidebar__note">PostgreSQL keeps the ledger. A socket only says that a row changed.</p>
   </aside>
   <main class="workspace">
     <router-outlet />
