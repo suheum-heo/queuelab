@@ -1,0 +1,20 @@
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/dashboard">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span>
+        <strong>QueueLab</strong>
+        <small>Dispatch</small>
+      </span>
+    </a>
+    <nav class="sidebar__nav" aria-label="Primary">
+      <a routerLink="/dashboard" routerLinkActive="is-active">Overview</a>
+      <a routerLink="/jobs" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">Jobs</a>
+      <a routerLink="/jobs/new" routerLinkActive="is-active">New job</a>
+    </nav>
+    <p class="sidebar__note">PostgreSQL keeps the ledger. Redis delivers the work. This view polls until sockets arrive.</p>
+  </aside>
+  <main class="workspace">
+    <router-outlet />
+  </main>
+</div>

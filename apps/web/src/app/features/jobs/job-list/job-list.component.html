@@ -1,0 +1,68 @@
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Ledger</p>
+    <h1>All jobs</h1>
+  </div>
+  <a class="button" routerLink="/jobs/new">Dispatch job</a>
+</header>
+
+<form class="filters" [formGroup]="filters" (ngSubmit)="search()">
+  <label class="search">
+    <span>Search</span>
+    <input formControlName="q" type="search" placeholder="sales, inventory, orders" />
+  </label>
+  <div class="chips" role="group" aria-label="Filter by status">
+    <button type="button" class="chip" [class.is-on]="filters.controls.status.value === 'ALL'" (click)="setStatus('ALL')">
+      All
+    </button>
+    @for (status of statuses; track status) {
+      <button
+        type="button"
+        class="chip"
+        [class.is-on]="filters.controls.status.value === status"
+        (click)="setStatus(status)"
+      >
+        {{ statusLabel[status] }}
+      </button>
+    }
+  </div>
+</form>
+
+@if (error()) {
+  <p class="banner" role="alert">{{ error() }}</p>
+}
+
+@if (expanded()) {
+  <p class="help">
+    Live refresh is paused so older pages stay put.
+    <button type="button" class="text-button" (click)="backToLatest()">Back to latest</button>
+  </p>
+}
+
+<section class="panel">
+  @if (jobs().length === 0 && !loading()) {
+    <p class="empty">Nothing matches this filter.</p>
+  } @else {
+    <div class="jobs">
+      @for (job of jobs(); track job.id) {
+        <a class="job" [routerLink]="['/jobs', job.id]">
+          <span class="job__name">
+            {{ job.filename }}
+            @if (job.seeded) {
+              <em class="sample">Sample</em>
+            }
+          </span>
+          <app-status [status]="job.status" />
+          <app-progress [value]="job.progress" [status]="job.status" />
+          <span class="job__pct">{{ job.progress | number: '1.0-0' }}%</span>
+        </a>
+      }
+    </div>
+  }
+
+  @if (nextCursor()) {
+    <div class="panel__foot">
+      <button type="button" class="button ghost" (click)="loadMore()">Load more</button>
+    </div>
+  }
+</section>

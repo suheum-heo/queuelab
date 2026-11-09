@@ -1,0 +1,90 @@
+// BullMQ owns execution (attempts, locks, backoff).
+// PostgreSQL stores the application's durable, queryable view of each job.
+// Those writes are synchronized by the API (enqueue) and the worker (progress
+// and completion). They are not one database transaction. See README.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "cjs"
+  generatedFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobType {
+  CSV_ANALYSIS
+}
+
+enum JobStatus {
+  PENDING_ENQUEUE
+  QUEUED
+  PROCESSING
+  RETRYING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  jobs      Job[]
+
+  @@map("users")
+}
+
+model Job {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  type         JobType
+  status       JobStatus @default(PENDING_ENQUEUE)
+  progress     Int       @default(0)
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3) @map("max_attempts")
+  inputKey     String?   @map("input_key")
+  resultKey    String?   @map("result_key")
+  errorMessage String?   @map("error_message")
+  options      Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  startedAt    DateTime? @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  user   User       @relation(fields: [userId], references: [id])
+  events JobEvent[]
+  result JobResult?
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("jobs")
+}
+
+model JobEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  jobId     String   @map("job_id") @db.Uuid
+  eventType String   @map("event_type")
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+  @@map("job_events")
+}
+
+model JobResult {
+  id          String   @id @default(uuid()) @db.Uuid
+  jobId       String   @unique @map("job_id") @db.Uuid
+  totalRows   Int      @map("total_rows")
+  validRows   Int      @map("valid_rows")
+  invalidRows Int      @map("invalid_rows")
+  summary     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("job_results")
+}

@@ -1,0 +1,7 @@
+node_modules
+**/node_modules
+**/dist
+**/.angular
+.git
+storage
+**/.env

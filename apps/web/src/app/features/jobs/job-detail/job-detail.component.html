@@ -1,0 +1,124 @@
+<a class="back" routerLink="/jobs">All jobs</a>
+
+@if (error() && !job()) {
+  <p class="banner" role="alert">{{ error() }}</p>
+} @else if (!job()) {
+  <p class="empty">Loading job…</p>
+} @else {
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">{{ job()!.id }}</p>
+      <h1>
+        {{ job()!.filename }}
+        @if (job()!.seeded) {
+          <em class="sample">Sample</em>
+        }
+      </h1>
+    </div>
+    <app-status [status]="job()!.status" />
+  </header>
+
+  @if (job()!.seeded) {
+    <p class="help">This row was inserted by the seed. It is not attached to a live worker.</p>
+  }
+
+  @if (job()!.errorMessage) {
+    <p class="banner" role="alert">{{ job()!.errorMessage }}</p>
+  }
+
+  <section class="panel">
+    <div class="progress-line">
+      <app-progress [value]="job()!.progress" [status]="job()!.status" />
+      <strong>{{ job()!.progress | number: '1.0-0' }}%</strong>
+    </div>
+    <dl class="detail-grid">
+      <div>
+        <dt>Type</dt>
+        <dd>{{ job()!.type }}</dd>
+      </div>
+      <div>
+        <dt>Attempt</dt>
+        <dd>{{ job()!.attemptsMade }} of {{ job()!.maxAttempts }}</dd>
+      </div>
+      <div>
+        <dt>Created</dt>
+        <dd>{{ job()!.createdAt | date: 'MMM d, HH:mm:ss' }}</dd>
+      </div>
+      <div>
+        <dt>Started</dt>
+        <dd>{{ job()!.startedAt ? (job()!.startedAt | date: 'MMM d, HH:mm:ss') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>Finished</dt>
+        <dd>{{ job()!.finishedAt ? (job()!.finishedAt | date: 'MMM d, HH:mm:ss') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>Input</dt>
+        <dd>{{ job()!.inputKey ?? '—' }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  @if (report(); as report) {
+    <section class="panel">
+      <div class="panel__head">
+        <h2>Report</h2>
+        <a class="button" [href]="'/api/v1/jobs/' + job()!.id + '/download'">Download JSON</a>
+      </div>
+      <div class="result-grid">
+        <article>
+          <p>Total rows</p>
+          <strong>{{ report.totalRows | number }}</strong>
+        </article>
+        <article>
+          <p>Valid</p>
+          <strong>{{ report.validRows | number }}</strong>
+        </article>
+        <article>
+          <p>Invalid</p>
+          <strong>{{ report.invalidRows | number }}</strong>
+        </article>
+        <article>
+          <p>Quantity</p>
+          <strong>{{ report.totals.quantity | number: '1.0-3' }}</strong>
+        </article>
+        <article>
+          <p>Amount</p>
+          <strong>{{ report.totals.amount | number: '1.2-2' }}</strong>
+        </article>
+      </div>
+      @if (report.invalidSamples?.length) {
+        <ul class="samples">
+          @for (sample of report.invalidSamples; track sample.rowNumber) {
+            <li>Row {{ sample.rowNumber }}: {{ sample.reason }}</li>
+          }
+        </ul>
+        @if (report.invalidRows > report.invalidSamples.length) {
+          <p class="help">
+            {{ report.invalidRows - report.invalidSamples.length | number }} more invalid rows were counted.
+          </p>
+        }
+      }
+      <p class="help">{{ report.note }}</p>
+    </section>
+  }
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2>History</h2>
+    </div>
+    @if (events().length === 0) {
+      <p class="empty">No events recorded.</p>
+    } @else {
+      <ol class="timeline">
+        @for (event of events(); track event.id) {
+          <li>
+            <span>{{ event.eventType }}</span>
+            <p>{{ event.message }}</p>
+            <time [attr.datetime]="event.createdAt">{{ event.createdAt | date: 'HH:mm:ss' }}</time>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+}

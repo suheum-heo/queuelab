@@ -1,0 +1,77 @@
+# Infra for local development.
+# API, worker, and Angular run on the host (`pnpm dev`) so they can hot reload.
+# `docker compose --profile full up --build` also starts the API and worker in containers.
+
+name: queuelab
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: queuelab
+      POSTGRES_PASSWORD: queuelab
+      POSTGRES_DB: queuelab
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queuelab -d queuelab"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    profiles: ["full"]
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfiles/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://queuelab:queuelab@postgres:5432/queuelab?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+      WEB_ORIGIN: http://localhost:4200
+      STORAGE_PATH: /app/storage
+      DEMO_USER_EMAIL: demo@queuelab.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfiles/worker.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://queuelab:queuelab@postgres:5432/queuelab?schema=public
+      REDIS_URL: redis://redis:6379
+      STORAGE_PATH: /app/storage
+      WORKER_CONCURRENCY: 2
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  storage:

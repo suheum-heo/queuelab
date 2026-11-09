@@ -1,0 +1,49 @@
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Dispatch</p>
+    <h1>New analysis</h1>
+  </div>
+</header>
+
+<p class="help lead">
+  Upload a CSV with columns order_id, sku, quantity, and amount. QueueLab stores the file, then the worker streams it and writes a report.
+</p>
+
+<form class="form" [formGroup]="form" (ngSubmit)="submit()">
+  <label class="field">
+    <span>CSV file</span>
+    <input type="file" accept=".csv,text/csv" (change)="chooseFile($event)" />
+  </label>
+  @if (fileName()) {
+    <p class="help">{{ fileName() }}</p>
+  }
+  @if (fileError()) {
+    <p class="banner" role="alert">{{ fileError() }}</p>
+  }
+
+  <label class="field">
+    <span>Delimiter</span>
+    <select formControlName="delimiter">
+      <option value=",">Comma</option>
+      <option value=";">Semicolon</option>
+      <option value="|">Pipe</option>
+      <option value="tab">Tab</option>
+    </select>
+  </label>
+
+  <label class="check">
+    <input type="checkbox" formControlName="hasHeader" />
+    <span>First row is a header</span>
+  </label>
+
+  @if (error()) {
+    <p class="banner" role="alert">{{ error() }}</p>
+  }
+
+  <div class="actions">
+    <button class="button" type="submit" [disabled]="saving()">
+      {{ saving() ? 'Dispatching…' : 'Dispatch job' }}
+    </button>
+    <a class="button ghost" routerLink="/jobs">Cancel</a>
+  </div>
+</form>

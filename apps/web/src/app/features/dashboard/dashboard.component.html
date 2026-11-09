@@ -1,0 +1,51 @@
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Jobs in the ledger</h1>
+  </div>
+  <p class="live" [class.is-error]="error()" role="status">{{ error() ?? 'Refreshing every 2 seconds' }}</p>
+</header>
+
+<section class="metrics" aria-label="Job counts">
+  <article class="metric">
+    <p class="metric__label">Total jobs</p>
+    <p class="metric__value">{{ metrics()?.total ?? '—' }}</p>
+  </article>
+  <article class="metric metric--active">
+    <p class="metric__label">Processing</p>
+    <p class="metric__value">{{ processing() ?? '—' }}</p>
+    <p class="metric__hint">{{ metrics()?.queued ?? 0 }} queued</p>
+  </article>
+  <article class="metric metric--bad">
+    <p class="metric__label">Failed</p>
+    <p class="metric__value">{{ metrics()?.failed ?? '—' }}</p>
+    <p class="metric__hint">{{ metrics()?.retrying ?? 0 }} retrying</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2>Recent jobs</h2>
+    <a routerLink="/jobs">View all</a>
+  </div>
+
+  @if (recent().length === 0) {
+    <p class="empty">No jobs yet. Dispatch one and the worker will pick it up.</p>
+  } @else {
+    <div class="jobs">
+      @for (job of recent(); track job.id) {
+        <a class="job" [routerLink]="['/jobs', job.id]">
+          <span class="job__name">
+            {{ job.filename }}
+            @if (job.seeded) {
+              <em class="sample">Sample</em>
+            }
+          </span>
+          <app-status [status]="job.status" />
+          <app-progress [value]="job.progress" [status]="job.status" />
+          <span class="job__pct">{{ job.progress | number: '1.0-0' }}%</span>
+        </a>
+      }
+    </div>
+  }
+</section>
