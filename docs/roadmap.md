@@ -20,7 +20,7 @@ Copied from the implementation plan. Checked items work in this repository.
 - [x] Implement streaming CSV validation and aggregation
 - [x] Test successful and invalid CSV processing
 
-The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 MB while it writes it. The worker never reads that file into one string. Structural problems (empty file, missing columns, broken quotes, every row invalid) are permanent and are not retried. A row with a bad quantity is counted and excluded from the totals. The "fail at 34%" demonstration was removed because it failed on every attempt and could not show recovery.
+The worker streams `uploads/{id}.csv`. The API may hold a file up to 10 MB while it writes it. The worker never reads that file into one string. Structural problems (empty file, missing columns, broken quotes, every row invalid) are permanent and are not retried. A row with a bad quantity is counted and excluded from the totals. The "fail at 34%" demonstration was removed because it failed on every attempt and could not show recovery.
 
 ## Week 3 — Real-time and reliability
 
@@ -49,12 +49,13 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
 | M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Done. Live updates, manual retry, and crash recovery work |
-| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication, owner checks, and GitHub Actions CI are in place. Deployment is still open |
+| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication, owner checks, CI, and the Render blueprint are in place. The public services are not created yet |
 
 ## Engineering notes
 
 - **Upload then enqueue.** The file is stored before the job row exists. The job points at `uploads/{uuid}.csv`. Reusing one upload for several jobs is allowed. Idempotency is per job id.
-- **Why the API buffers and the worker streams.** Multipart parsing already has the body. Capping it at 10 MB keeps that buffer small. The worker uses `fs.createReadStream` and `csv-parse`, and progress is based on bytes read versus `stat` size. Counting newlines would be wrong when a quoted field contains a line break.
+- **Why the API buffers and the worker streams.** Multipart parsing already has the body. Capping it at 10 MB keeps that buffer small. The worker opens the object as a stream and parses it with `csv-parse`. Progress uses the object size, which stays correct when a quoted field contains a newline.
+- **One bucket, two processes.** Local development writes under `STORAGE_PATH`. Production sets `S3_BUCKET` and both the API and the worker use that bucket. A container restart does not delete an upload or a report. The local store still publishes a report with a temp file and a rename, so a crash cannot leave a partial file. An S3 put replaces the whole object.
 - **Cents, not floats.** Amounts are summed as integer cents and divided at the end, so `10.555` and `2.25` do not drift.
 - **Permanent versus retryable.** `PermanentCsvError` becomes BullMQ `UnrecoverableError`. A missing file is permanent. Other I/O errors are thrown so the attempt budget still applies.
 - **One result row.** The worker writes `results/{jobId}/{executionId}.json` before the database commit, and only if that execution is still current. The commit upserts `JobResult` on `job_id`. A crash before the file leaves the next attempt to read the CSV again. A crash after the file and before the commit leaves that execution's file for the next attempt to overwrite. A crash after the commit returns immediately on the next run. An older execution never writes the newer execution's path.

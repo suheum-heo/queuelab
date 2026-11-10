@@ -6,22 +6,22 @@
     "node": ">=22"
   },
   "scripts": {
-    "build:packages": "pnpm --filter @queuelab/database build && pnpm --filter @queuelab/shared-types build",
+    "build:packages": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/storage build && pnpm --filter @queuelab/database build",
     "dev": "pnpm build:packages && concurrently -n api,worker,web -c cyan,magenta,yellow \"pnpm dev:api\" \"pnpm dev:worker\" \"pnpm dev:web\"",
     "dev:api": "pnpm --filter @queuelab/api dev",
     "dev:worker": "pnpm --filter @queuelab/worker dev",
     "dev:web": "pnpm --filter @queuelab/web start",
     "db:generate": "pnpm --filter @queuelab/database generate",
     "db:migrate": "pnpm --filter @queuelab/database migrate",
-    "db:seed": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database seed",
+    "db:seed": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/storage build && pnpm --filter @queuelab/database seed",
     "docker:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker-compose.yml down",
-    "typecheck": "pnpm --filter @queuelab/shared-types exec tsc --noEmit && pnpm --filter @queuelab/database exec tsc --noEmit && pnpm --filter @queuelab/api exec tsc --noEmit -p tsconfig.json && pnpm --filter @queuelab/worker exec tsc --noEmit -p tsconfig.json",
+    "typecheck": "pnpm --filter @queuelab/shared-types exec tsc --noEmit && pnpm --filter @queuelab/storage exec tsc --noEmit && pnpm --filter @queuelab/database exec tsc --noEmit && pnpm --filter @queuelab/api exec tsc --noEmit -p tsconfig.json && pnpm --filter @queuelab/worker exec tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "secrets": "node scripts/check-secrets.mjs",
     "db:validate": "pnpm --filter @queuelab/database exec prisma validate",
     "db:deploy": "pnpm --filter @queuelab/database exec prisma migrate deploy",
-    "test": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database build && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test"
+    "test": "pnpm build:packages && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/storage test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

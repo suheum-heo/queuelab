@@ -1,5 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
+import type { Readable } from 'node:stream';
 import { parse, type Options as ParseOptions } from 'csv-parse';
 import {
   CSV_REQUIRED_COLUMNS,
@@ -33,6 +34,19 @@ export async function analyzeCsvFile(
     }
     throw error;
   }
+  return analyzeCsvStream(createReadStream(filePath), size, options, onProgress);
+}
+
+/**
+ * Folds a CSV stream into totals. `size` is the object size, so progress stays
+ * correct when a quoted field contains a newline. Rows are discarded as they arrive.
+ */
+export async function analyzeCsvStream(
+  source: Readable,
+  size: number,
+  options: { delimiter: string; hasHeader: boolean },
+  onProgress?: (progress: CsvProgress) => Promise<void>,
+): Promise<AnalysisReport> {
   if (size === 0) {
     throw new PermanentCsvError('CSV file is empty');
   }
@@ -40,7 +54,6 @@ export async function analyzeCsvFile(
   const aggregator = new CsvAggregator();
   let bytesRead = 0;
   let lastEmit = Date.now();
-  const source = createReadStream(filePath);
   source.on('data', (chunk: Buffer | string) => {
     bytesRead += typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length;
   });

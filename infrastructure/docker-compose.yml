@@ -1,6 +1,7 @@
 # Infra for local development.
 # API, worker, and Angular run on the host (`pnpm dev`) so they can hot reload.
 # `docker compose --profile full up --build` also starts the API and worker in containers.
+# That profile shares one volume. Production does not. It uses the bucket in render.yaml.
 
 name: queuelab
 

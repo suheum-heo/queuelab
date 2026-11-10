@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
+import { createObjectStore } from '@queuelab/storage';
 import { simulateAnalysis, type CsvAnalysisOptions } from '@queuelab/shared-types';
 import { createPrismaClient } from '../src/client';
 
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   }
 
   const prisma = createPrismaClient(databaseUrl);
-  const root = storageRoot();
+  const reports = createObjectStore(storageRoot());
 
   try {
     await prisma.user.upsert({
@@ -59,8 +59,8 @@ async function main(): Promise<void> {
     const customersReport = simulateAnalysis(IDS.customers, 8420);
     const refundsReport = simulateAnalysis(IDS.refunds, 1260);
 
-    await writeReport(root, IDS.customers, customersReport);
-    await writeReport(root, IDS.refunds, refundsReport);
+    await writeReport(reports, IDS.customers, customersReport);
+    await writeReport(reports, IDS.refunds, refundsReport);
 
     await prisma.job.create({
       data: {
@@ -242,10 +242,12 @@ function event(
   };
 }
 
-async function writeReport(root: string, jobId: string, report: unknown): Promise<void> {
-  const target = resolve(root, 'results', `${jobId}.json`);
-  await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, JSON.stringify(report, null, 2));
+async function writeReport(
+  reports: ReturnType<typeof createObjectStore>,
+  jobId: string,
+  report: unknown,
+): Promise<void> {
+  await reports.write(`results/${jobId}.json`, JSON.stringify(report, null, 2));
 }
 
 main().catch((error: unknown) => {

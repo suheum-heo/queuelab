@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient, type PrismaClient } from '@queuelab/database';
 import type { CsvAnalysisPayload, JobView } from '@queuelab/shared-types';
 import type { Job } from 'bullmq';
+import { localObjectStore } from '@queuelab/storage';
 import { findRepoRoot, storagePath } from '../../../worker/src/env';
 import { accessToken } from '../auth/test-login';
 import { processCsvJob } from '../../../worker/src/process-csv-job';
@@ -210,7 +211,7 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
         opts: { attempts: 3 },
         updateProgress: async () => undefined,
       } as unknown as Job<CsvAnalysisPayload>,
-      storage,
+      localObjectStore(storage),
       { async publish() {}, async close() {} },
     );
 

@@ -16,7 +16,7 @@ BullMQ owns execution: locks, attempts, and backoff. PostgreSQL owns the queryab
 
 Creating a job:
 
-1. Store the CSV under `storage/uploads/{id}.csv`. The API accepts up to 10 MB and keeps that body in memory only long enough to write it. The original name is display text. The storage name is the id, so a filename cannot leave the storage directory.
+1. Store the CSV at `uploads/{id}.csv`. The API accepts up to 10 MB and keeps that body in memory only long enough to write it. The original name is display text. The storage name is the id, so a key cannot leave the store. Local development writes that key under `STORAGE_PATH`. Production writes it to an S3-compatible bucket that the API and the worker both use.
 2. Insert the job row as `PENDING_ENQUEUE`, pointing at that file.
 3. Add a BullMQ job whose id is the execution id and whose payload is the storage key.
 4. Mark the row `QUEUED` only after Redis accepts it.
@@ -98,6 +98,14 @@ pnpm audit --audit-level high
 
 `pnpm db:deploy` applies committed migrations to whatever `DATABASE_URL` is set. Point it at a disposable database.
 
+## Production
+
+`render.yaml` describes the public deployment. The Angular image is the only public HTTPS service. It proxies `/api` and `/socket.io` to a private API, so the session cookie stays on one site. A separate worker process reads the same Redis queue. PostgreSQL and Redis are managed. CSV uploads and JSON reports go to object storage, so a new container still sees the files written by the other.
+
+Production refuses to boot without `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`, and without the https OpenID settings in `.env.example`. `S3_ENDPOINT` is optional and is how an S3-compatible service such as Cloudflare R2 is selected. Leave `S3_BUCKET` empty on a laptop. The local directory is `STORAGE_PATH`.
+
+Connecting the GitHub repository to Render picks up `render.yaml`. Render prompts for the issuer, client, redirect, and bucket credentials. Set the redirect to the web service origin plus `/api/v1/auth/callback`. The CLI on this machine can validate the file with `render blueprints validate ./render.yaml`. It is not signed in, so the services are not created yet.
+
 ## Layout
 
 - `apps/web` — Angular shell, dashboard, job list, detail, and upload form
@@ -105,11 +113,12 @@ pnpm audit --audit-level high
 - `apps/worker` — BullMQ processor and streaming CSV analysis
 - `packages/database` — Prisma schema, migrations, and seed
 - `packages/shared-types` — status unions, payloads, and row aggregation
+- `packages/storage` — local directory or S3-compatible object store
 - `infrastructure` — Compose file and Dockerfiles
 
 ## Not in this slice
 
 - Cancellation
-- Browser end-to-end tests and deployment
+- Browser end-to-end tests
 
 The checklist and the reasons for these choices are in [docs/roadmap.md](docs/roadmap.md).

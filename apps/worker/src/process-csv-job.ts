@@ -1,6 +1,5 @@
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
 import { Prisma, type PrismaClient } from '@queuelab/database';
+import { isMissingObject, type ObjectStore } from '@queuelab/storage';
 import {
   DEFAULT_MAX_ATTEMPTS,
   reportObjectKey,
@@ -9,7 +8,7 @@ import {
   type CrashPoint,
 } from '@queuelab/shared-types';
 import { Job, Queue, UnrecoverableError } from 'bullmq';
-import { analyzeCsvFile, permanentCsvError } from './csv/analyze-file';
+import { analyzeCsvStream, permanentCsvError } from './csv/analyze-file';
 import type { JobNotifier } from './job-notifier';
 
 const UPLOAD_KEY =
@@ -22,15 +21,15 @@ const UPLOAD_KEY =
  * attempt cannot replace a newer result.
  *
  * Each attempt reads the CSV from the start. JobResult is upserted on job_id.
- * The report file is results/{jobId}/{executionId}.json, written before the
- * ledger commit. A newer execution uses a different path, so a late rename
- * cannot replace its bytes. A crash before the commit leaves the file for the
- * next attempt of this same execution to overwrite.
+ * The report object is results/{jobId}/{executionId}.json, written before the
+ * ledger commit. The store publishes that object in one write. A newer
+ * execution uses a different key. A crash before the commit leaves the object
+ * for the next attempt of this same execution to overwrite.
  */
 export async function processCsvJob(
   prisma: PrismaClient,
   job: Job<CsvAnalysisPayload>,
-  storageRoot: string,
+  store: ObjectStore,
   notifier: JobNotifier,
 ): Promise<void> {
   const payload = job.data;
@@ -55,12 +54,6 @@ export async function processCsvJob(
   const execution = await prisma.jobExecution.findUnique({ where: { id: payload.executionId } });
   if (!execution || execution.jobId !== record.id) {
     throw new UnrecoverableError('Execution does not belong to this job');
-  }
-
-  const root = resolve(storageRoot);
-  const source = resolve(root, payload.fileKey);
-  if (!source.startsWith(root + sep)) {
-    throw new UnrecoverableError('Upload path escapes storage');
   }
 
   const attempt = job.attemptsMade + 1;
@@ -116,8 +109,10 @@ export async function processCsvJob(
   const announced = new Set<number>();
   let analysis;
   try {
-    analysis = await analyzeCsvFile(
-      source,
+    const opened = await store.open(payload.fileKey);
+    analysis = await analyzeCsvStream(
+      opened.stream,
+      opened.size,
       {
         delimiter: payload.options?.delimiter || ',',
         hasHeader: payload.options?.hasHeader ?? true,
@@ -138,6 +133,7 @@ export async function processCsvJob(
       },
     );
   } catch (error) {
+    if (isMissingObject(error)) throw new UnrecoverableError('Uploaded CSV is missing from storage');
     const permanent = permanentCsvError(error);
     if (permanent) throw new UnrecoverableError(permanent.message);
     throw error;
@@ -147,17 +143,10 @@ export async function processCsvJob(
   crashOnce(payload.options, 'before-report', job.attemptsMade);
 
   const reportKey = reportObjectKey(record.id, execution.id);
-  const finalPath = resolve(root, reportKey);
-  const temporary = `${finalPath}.tmp`;
-  if (!finalPath.startsWith(root + sep) || !temporary.startsWith(root + sep)) {
-    throw new UnrecoverableError('Refusing to write a report outside storage');
-  }
-  await mkdir(dirname(finalPath), { recursive: true });
-  await writeFile(temporary, JSON.stringify(analysis, null, 2));
-  await rename(temporary, finalPath);
+  await store.write(reportKey, JSON.stringify(analysis, null, 2));
   crashOnce(payload.options, 'after-report', job.attemptsMade);
   if (!(await isCurrent(prisma, record.id, payload.executionId))) {
-    await rm(finalPath, { force: true });
+    await store.remove(reportKey);
     return;
   }
 
@@ -216,7 +205,7 @@ export async function processCsvJob(
   });
 
   if (!won) {
-    await rm(finalPath, { force: true });
+    await store.remove(reportKey);
     return;
   }
 

@@ -1,5 +1,6 @@
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
+import { createObjectStore } from '@queuelab/storage';
 import { findRepoRoot, storagePath } from './env';
 
 loadEnv({ path: resolve(findRepoRoot(__dirname), '.env') });
@@ -19,7 +20,7 @@ async function main(): Promise<void> {
   const prisma = createPrismaClient(databaseUrl);
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const notifier = createJobNotifier(redisUrl);
-  const storage = storagePath(findRepoRoot(__dirname));
+  const storage = createObjectStore(storagePath(findRepoRoot(__dirname)));
   const concurrency = Number(process.env.WORKER_CONCURRENCY ?? 2);
 
   const queueName = resolveCsvAnalysisQueue();

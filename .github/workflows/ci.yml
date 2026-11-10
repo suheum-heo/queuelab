@@ -70,6 +70,8 @@ jobs:
         run: pnpm db:validate
       - name: Apply Prisma migrations
         run: pnpm db:deploy
+      - name: Seed the sample ledger
+        run: pnpm db:seed
       - name: Test API, worker, and shared packages
         run: pnpm test
       - name: Test Angular

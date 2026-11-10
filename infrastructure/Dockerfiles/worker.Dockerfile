@@ -11,6 +11,7 @@ ARG DATABASE_URL=postgresql://queuelab:queuelab@localhost:5432/queuelab
 ENV DATABASE_URL=$DATABASE_URL
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @queuelab/shared-types build \
+  && pnpm --filter @queuelab/storage build \
   && pnpm --filter @queuelab/database build \
   && pnpm --filter @queuelab/worker build
 

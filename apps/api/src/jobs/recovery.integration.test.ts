@@ -11,6 +11,7 @@ import { Queue, UnrecoverableError, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient, type PrismaClient } from '@queuelab/database';
+import { localObjectStore } from '@queuelab/storage';
 import { reportObjectKey, type CsvAnalysisPayload } from '@queuelab/shared-types';
 import { findRepoRoot, storagePath } from '../../../worker/src/env';
 import { markFailed, processCsvJob } from '../../../worker/src/process-csv-job';
@@ -22,6 +23,7 @@ loadEnv({ path: resolve(__dirname, '../../../../.env') });
 const repo = findRepoRoot(__dirname);
 const queueName = `csv-analysis-recovery-${process.pid}`;
 const storage = storagePath(repo);
+const files = localObjectStore(storage);
 const createdIds: string[] = [];
 const logs = { worker: '' };
 
@@ -275,7 +277,7 @@ describe('crash recovery and reconciliation', { concurrency: 1 }, () => {
     assert.equal((await prisma.job.findUniqueOrThrow({ where: { id: after.id } })).status, 'COMPLETED');
     await markFailed(prisma, fakeJob(after, 1), new Error('Simulated crash at after-upsert'), noopNotifier);
     assert.equal((await prisma.job.findUniqueOrThrow({ where: { id: after.id } })).status, 'COMPLETED');
-    await processCsvJob(prisma, fakeJob(after, 1), storage, noopNotifier);
+    await processCsvJob(prisma, fakeJob(after, 1), files, noopNotifier);
     assert.equal(await prisma.jobResult.count({ where: { jobId: after.id } }), 1);
     const result = await prisma.jobResult.findUniqueOrThrow({ where: { jobId: after.id } });
     assert.equal(result.executionId, after.executionId);
@@ -285,7 +287,7 @@ describe('crash recovery and reconciliation', { concurrency: 1 }, () => {
     const job = await insertJob('it-report-stale.csv', 'order_id,sku,quantity,amount\n4,c,1,2.00\n', {
       status: 'QUEUED',
     });
-    await processCsvJob(prisma, fakeJob(job, 0), storage, noopNotifier);
+    await processCsvJob(prisma, fakeJob(job, 0), files, noopNotifier);
     const replacementId = randomUUID();
     const replacementKey = reportObjectKey(job.id, replacementId);
     await mkdir(resolve(storage, `results/${job.id}`), { recursive: true });
@@ -307,7 +309,7 @@ describe('crash recovery and reconciliation', { concurrency: 1 }, () => {
       data: { executionId: replacementId, totalRows: 99 },
     });
 
-    await processCsvJob(prisma, fakeJob(job, 0), storage, noopNotifier);
+    await processCsvJob(prisma, fakeJob(job, 0), files, noopNotifier);
 
     assert.equal(await readFile(resolve(storage, replacementKey), 'utf8'), '{"owner":"execution-2"}');
     const result = await prisma.jobResult.findUniqueOrThrow({ where: { jobId: job.id } });
@@ -391,14 +393,14 @@ describe('crash recovery and reconciliation', { concurrency: 1 }, () => {
 
   async function expectCrash(job: Inserted, point: string): Promise<void> {
     await assert.rejects(
-      () => processCsvJob(prisma, fakeJob(job, 0), storage, noopNotifier),
+      () => processCsvJob(prisma, fakeJob(job, 0), files, noopNotifier),
       (error: unknown) => error instanceof Error && error.message === `Simulated crash at ${point}`,
     );
   }
 
   async function finishAfterCrash(job: Inserted): Promise<void> {
     await markFailed(prisma, fakeJob(job, 1), new Error(`Simulated crash at ${job.crashAt}`), noopNotifier);
-    await processCsvJob(prisma, fakeJob(job, 1), storage, noopNotifier);
+    await processCsvJob(prisma, fakeJob(job, 1), files, noopNotifier);
     assert.equal((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).status, 'COMPLETED');
   }
 

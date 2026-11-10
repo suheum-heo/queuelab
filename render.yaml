@@ -1,0 +1,103 @@
+# Public site, private API, and a separate worker.
+# Uploads and reports use an S3-compatible bucket, not a disk shared by the containers.
+# Render prompts for every sync: false value. The API will not boot until those are set.
+# Set OIDC_REDIRECT_URI to the web service origin plus /api/v1/auth/callback.
+# WEB_ORIGIN is filled from the web service. The issuer must be a real https provider.
+
+services:
+  - type: web
+    name: queuelab-web
+    runtime: docker
+    dockerfilePath: ./infrastructure/Dockerfiles/web.Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: API_UPSTREAM
+        value: http://queuelab-api:10000
+
+  - type: pserv
+    name: queuelab-api
+    runtime: docker
+    dockerfilePath: ./infrastructure/Dockerfiles/api.Dockerfile
+    dockerContext: .
+    preDeployCommand: pnpm --filter @queuelab/database exec prisma migrate deploy
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: queuelab-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: queuelab-redis
+          type: keyvalue
+          property: connectionString
+      - key: WEB_ORIGIN
+        fromService:
+          name: queuelab-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: AUTH_COOKIE_SECRET
+        generateValue: true
+      - key: DEMO_USER_EMAIL
+        value: demo@queuelab.dev
+      - key: S3_FORCE_PATH_STYLE
+        value: "false"
+      - fromGroup: queuelab-production
+
+  - type: worker
+    name: queuelab-worker
+    runtime: docker
+    dockerfilePath: ./infrastructure/Dockerfiles/worker.Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: queuelab-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: queuelab-redis
+          type: keyvalue
+          property: connectionString
+      - key: S3_FORCE_PATH_STYLE
+        value: "false"
+      - fromGroup: queuelab-production
+
+  - type: keyvalue
+    name: queuelab-redis
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
+databases:
+  - name: queuelab-db
+    databaseName: queuelab
+    ipAllowList: []
+
+envVarGroups:
+  - name: queuelab-production
+    envVars:
+      - key: OIDC_ISSUER
+        sync: false
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_CLIENT_SECRET
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false

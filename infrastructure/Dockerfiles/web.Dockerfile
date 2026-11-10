@@ -8,6 +8,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/web build
 
 FROM nginx:1.27-alpine
-COPY infrastructure/Dockerfiles/nginx.conf /etc/nginx/conf.d/default.conf
+ENV API_UPSTREAM=http://127.0.0.1:9
+COPY infrastructure/Dockerfiles/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/apps/web/dist/web/browser /usr/share/nginx/html
 EXPOSE 80
