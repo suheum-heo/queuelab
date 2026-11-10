@@ -2,14 +2,40 @@
 
 QueueLab accepts a CSV analysis job, records it in PostgreSQL, and lets a separate worker finish it through Redis and BullMQ. The Angular app uploads the file and follows the ledger through a socket.
 
+![Dashboard for the signed-in demo account](docs/media/dashboard.png)
+
+## Demo
+
+[Watch the 69-second demo](docs/media/demo.webm). It signs in, uploads a 60,000-row CSV, follows that job to a report, then dispatches the same file with the first attempt set to fail. BullMQ retries that execution, and the second attempt writes the report.
+
+![Upload form with a CSV selected](docs/media/upload.png)
+
+![Completed report for 60,000 rows, 1,500 of them invalid](docs/media/report.png)
+
+![Second attempt running after the first attempt failed](docs/media/retrying.png)
+
+![History of the failed attempt, the retry, and the stored report](docs/media/recovery.png)
+
 ## Architecture
 
-```text
-Angular --HTTP--> NestJS API --enqueue--> Redis / BullMQ --> Worker
-   ^                |                         |               |
-   |                +-------- PostgreSQL -----+---------------+
-   |                |                                         |
-   +-- Socket.IO ---+<----- job notice ---- Redis pub/sub ----+
+```mermaid
+flowchart LR
+  web["Angular"]
+  api["NestJS API"]
+  db[("PostgreSQL")]
+  redis[("Redis / BullMQ")]
+  worker["Worker"]
+  store["Uploads and reports"]
+
+  web -->|"HTTP and Socket.IO"| api
+  api -->|"job ledger"| db
+  api -->|"enqueue"| redis
+  worker -->|"claim"| redis
+  worker -->|"status and result"| db
+  api -->|"save the CSV"| store
+  worker -->|"read the CSV and write the report"| store
+  worker -->|"job notice"| redis
+  redis -->|"job notice"| api
 ```
 
 BullMQ owns execution: locks, attempts, and backoff. PostgreSQL owns the queryable history: status, progress, events, and result rows. Those two writes are not one transaction. After a durable write, the API or worker publishes a small notice. Socket.IO forwards that notice to open pages. The page then rereads the job from the REST API. A reconnect does the same reread, so a missed notice does not become the state of the screen.
@@ -102,21 +128,9 @@ pnpm audit --audit-level high
 
 Local measurements from [docs/benchmarks.md](docs/benchmarks.md), taken on an Apple M5 with 16 GiB of memory, Homebrew PostgreSQL 17, and Redis 8. Each of 20 jobs analyzed the same 280,000-row CSV (7.3 MB). `pnpm dev` was also running.
 
-```mermaid
-xychart-beta
-    title "Jobs completed per minute"
-    x-axis "Worker processes" [1, 2, 4, 8]
-    y-axis "Jobs per minute" 0 --> 400
-    bar [93.7, 192, 320.8, 351.4]
-```
+![One worker completed 93.7 jobs per minute and eight completed 351.4](docs/media/throughput.svg)
 
-```mermaid
-xychart-beta
-    title "Median processing time"
-    x-axis "Worker processes" [1, 2, 4, 8]
-    y-axis "Milliseconds" 0 --> 1500
-    bar [629, 615, 734, 1242]
-```
+![Median processing time stayed near 630 ms through four workers and rose to 1,242 ms at eight](docs/media/latency.svg)
 
 | Workers | Jobs/min | Submit p50 / p95 | Queue wait p50 / p95 | Process p50 / p95 |
 | --- | ---: | ---: | ---: | ---: |

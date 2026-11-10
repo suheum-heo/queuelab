@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="380" viewBox="0 0 720 380" role="img" aria-labelledby="title desc">
+  <title id="title">Median processing time</title>
+  <desc id="desc">Median processing time was 629 milliseconds with one worker, 615 with two, 734 with four, and 1242 with eight.</desc>
+  <rect width="720" height="380" rx="16" fill="#1b1e16"/>
+  <text x="28" y="40" fill="#f4efe4" font-family="Georgia, serif" font-size="22">Median processing time</text>
+  <text x="28" y="64" fill="#b7b09f" font-family="Avenir Next, sans-serif" font-size="13">finishedAt minus startedAt, 20 jobs at each worker count</text>
+  <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12" fill="#827c70">
+    <text x="52" y="104" text-anchor="end">1.5s</text>
+    <text x="52" y="174" text-anchor="end">1.0s</text>
+    <text x="52" y="244" text-anchor="end">0.5s</text>
+    <text x="52" y="314" text-anchor="end">0</text>
+  </g>
+  <g stroke="rgba(244,239,228,0.12)">
+    <line x1="64" y1="100" x2="680" y2="100"/>
+    <line x1="64" y1="170" x2="680" y2="170"/>
+    <line x1="64" y1="240" x2="680" y2="240"/>
+    <line x1="64" y1="310" x2="680" y2="310"/>
+  </g>
+  <g fill="#9dcc73">
+    <rect x="112" y="222" width="72" height="88" rx="6"/>
+    <rect x="252" y="224" width="72" height="86" rx="6"/>
+    <rect x="392" y="207" width="72" height="103" rx="6"/>
+    <rect x="532" y="136" width="72" height="174" rx="6"/>
+  </g>
+  <g fill="#f4efe4" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="14" text-anchor="middle">
+    <text x="148" y="214">629 ms</text>
+    <text x="288" y="216">615 ms</text>
+    <text x="428" y="198">734 ms</text>
+    <text x="568" y="127">1,242 ms</text>
+  </g>
+  <g fill="#b7b09f" font-family="Avenir Next, sans-serif" font-size="14" text-anchor="middle">
+    <text x="148" y="338">1 worker</text>
+    <text x="288" y="338">2 workers</text>
+    <text x="428" y="338">4 workers</text>
+    <text x="568" y="338">8 workers</text>
+  </g>
+</svg>
