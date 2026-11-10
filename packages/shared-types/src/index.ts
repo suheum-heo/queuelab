@@ -34,6 +34,20 @@ export const DEMO_FAILURES = ['transient', 'exhaust-first-execution'] as const;
 
 export type DemoFailure = (typeof DEMO_FAILURES)[number];
 
+/** Test-only crash points. The public create API does not accept this field. */
+export const CRASH_POINTS = ['before-report', 'after-report', 'after-upsert'] as const;
+
+export type CrashPoint = (typeof CRASH_POINTS)[number];
+
+/**
+ * Test-only worker faults. The public create API does not accept this field.
+ * stall-once hangs until the process is killed, then the recovered run reads the file.
+ * stall-forever hangs on every run so BullMQ's stall limit can fail the execution.
+ */
+export const WORKER_FAULTS = ['stall-once', 'stall-forever'] as const;
+
+export type WorkerFault = (typeof WORKER_FAULTS)[number];
+
 export interface CsvAnalysisOptions {
   delimiter: string;
   hasHeader: boolean;
@@ -46,6 +60,23 @@ export interface CsvAnalysisOptions {
    * and a manual retry (execution 2) processes the file.
    */
   demoFailure?: DemoFailure;
+  crashAt?: CrashPoint;
+  fault?: WorkerFault;
+}
+
+const REPORT_KEY =
+  /^results\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})?\.json$/i;
+
+/** One file per execution, so a late writer cannot replace a newer execution's bytes. */
+export function reportObjectKey(jobId: string, executionId: string): string {
+  if (!REPORT_KEY.test(`results/${jobId}/${executionId}.json`)) {
+    throw new Error('Report path requires a job id and an execution id');
+  }
+  return `results/${jobId}/${executionId}.json`;
+}
+
+export function isStoredReportKey(key: string): boolean {
+  return REPORT_KEY.test(key);
 }
 
 export interface CsvAnalysisPayload {

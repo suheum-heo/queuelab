@@ -3,10 +3,12 @@ import { dirname, resolve, sep } from 'node:path';
 import { Prisma, type PrismaClient } from '@queuelab/database';
 import {
   DEFAULT_MAX_ATTEMPTS,
+  reportObjectKey,
   type CsvAnalysisOptions,
   type CsvAnalysisPayload,
+  type CrashPoint,
 } from '@queuelab/shared-types';
-import { Job, UnrecoverableError } from 'bullmq';
+import { Job, Queue, UnrecoverableError } from 'bullmq';
 import { analyzeCsvFile, permanentCsvError } from './csv/analyze-file';
 import type { JobNotifier } from './job-notifier';
 
@@ -20,6 +22,10 @@ const UPLOAD_KEY =
  * attempt cannot replace a newer result.
  *
  * Each attempt reads the CSV from the start. JobResult is upserted on job_id.
+ * The report file is results/{jobId}/{executionId}.json, written before the
+ * ledger commit. A newer execution uses a different path, so a late rename
+ * cannot replace its bytes. A crash before the commit leaves the file for the
+ * next attempt of this same execution to overwrite.
  */
 export async function processCsvJob(
   prisma: PrismaClient,
@@ -58,6 +64,7 @@ export async function processCsvJob(
   }
 
   const attempt = job.attemptsMade + 1;
+  const stalls = job.stalledCounter ?? 0;
   const claimed = await prisma.job.updateMany({
     where: { id: record.id, currentExecutionId: payload.executionId },
     data: {
@@ -85,9 +92,13 @@ export async function processCsvJob(
     data: {
       jobId: record.id,
       eventType: 'PROCESSING',
-      message: `Execution ${execution.number}, attempt ${attempt} claimed the file`,
+      message:
+        stalls > 0
+          ? `Execution ${execution.number} resumed after ${stalls} stall${stalls === 1 ? '' : 's'} and claimed the file again (attempt ${attempt}). The CSV is read from the first row.`
+          : `Execution ${execution.number}, attempt ${attempt} claimed the file`,
       metadata: {
         attempt,
+        stalls,
         executionId: execution.id,
         executionNumber: execution.number,
         fileKey: payload.fileKey,
@@ -95,6 +106,7 @@ export async function processCsvJob(
     },
   });
   await notifier.publish(record.id, 'PROCESSING');
+  await hangIfFault(payload.options, stalls);
 
   const demoFailure = demoFailureMessage(payload.options, execution.number, job.attemptsMade);
   if (demoFailure) {
@@ -131,12 +143,23 @@ export async function processCsvJob(
     throw error;
   }
 
-  const temporary = resolve(root, `results/${record.id}.${execution.id}.json.tmp`);
-  if (!temporary.startsWith(root + sep)) {
+  if (!(await isCurrent(prisma, record.id, payload.executionId))) return;
+  crashOnce(payload.options, 'before-report', job.attemptsMade);
+
+  const reportKey = reportObjectKey(record.id, execution.id);
+  const finalPath = resolve(root, reportKey);
+  const temporary = `${finalPath}.tmp`;
+  if (!finalPath.startsWith(root + sep) || !temporary.startsWith(root + sep)) {
     throw new UnrecoverableError('Refusing to write a report outside storage');
   }
-  await mkdir(dirname(temporary), { recursive: true });
+  await mkdir(dirname(finalPath), { recursive: true });
   await writeFile(temporary, JSON.stringify(analysis, null, 2));
+  await rename(temporary, finalPath);
+  crashOnce(payload.options, 'after-report', job.attemptsMade);
+  if (!(await isCurrent(prisma, record.id, payload.executionId))) {
+    await rm(finalPath, { force: true });
+    return;
+  }
 
   const won = await prisma.$transaction(async (tx) => {
     const updated = await tx.job.updateMany({
@@ -144,7 +167,7 @@ export async function processCsvJob(
       data: {
         status: 'COMPLETED',
         progress: 100,
-        resultKey: `results/${record.id}.json`,
+        resultKey: reportKey,
         finishedAt: new Date(),
         errorMessage: null,
       },
@@ -182,7 +205,7 @@ export async function processCsvJob(
           executionId: execution.id,
           executionNumber: execution.number,
           attempt,
-          resultKey: `results/${record.id}.json`,
+          resultKey: reportKey,
           totalRows: analysis.totalRows,
           validRows: analysis.validRows,
           invalidRows: analysis.invalidRows,
@@ -193,11 +216,11 @@ export async function processCsvJob(
   });
 
   if (!won) {
-    await rm(temporary, { force: true });
+    await rm(finalPath, { force: true });
     return;
   }
 
-  await rename(temporary, resolve(root, `results/${record.id}.json`));
+  crashOnce(payload.options, 'after-upsert', job.attemptsMade);
   await notifier.publish(record.id, 'COMPLETED');
 }
 
@@ -221,6 +244,7 @@ export async function markFailed(
   const permanent = error instanceof UnrecoverableError || error.name === 'UnrecoverableError';
   const willRetry = !permanent && job.attemptsMade < maxAttempts;
   const executionNumber = execution?.number ?? current.executionNumber;
+  const stalledOut = error.message.includes('stalled more than allowable limit');
 
   await prisma.job.updateMany({
     where: { id: jobId, currentExecutionId: executionId },
@@ -244,9 +268,11 @@ export async function markFailed(
     data: {
       jobId,
       eventType: willRetry ? 'RETRYING' : 'FAILED',
-      message: willRetry
-        ? `Execution ${executionNumber}, attempt ${job.attemptsMade} failed and will be retried. ${error.message}`
-        : `Execution ${executionNumber} failed after ${job.attemptsMade} attempt${job.attemptsMade === 1 ? '' : 's'}. ${error.message}`,
+      message: stalledOut
+        ? `Execution ${executionNumber} stopped after the worker stalled more than BullMQ allows. It was not queued again.`
+        : willRetry
+          ? `Execution ${executionNumber}, attempt ${job.attemptsMade} failed and will be retried. ${error.message}`
+          : `Execution ${executionNumber} failed after ${job.attemptsMade} attempt${job.attemptsMade === 1 ? '' : 's'}. ${error.message}`,
       metadata: {
         attempt: job.attemptsMade,
         executionId,
@@ -256,6 +282,50 @@ export async function markFailed(
     },
   });
   await notifier.publish(jobId, willRetry ? 'RETRYING' : 'FAILED');
+}
+
+/**
+ * BullMQ emits this on the worker that notices the expired lock. The execution
+ * id is the queue job id. The ledger keeps the original attempt and appends
+ * the stall; it does not start a new execution.
+ */
+export async function recordWorkerStall(
+  prisma: PrismaClient,
+  queue: Queue<CsvAnalysisPayload>,
+  executionId: string,
+  notifier: JobNotifier,
+): Promise<void> {
+  const bullJob = await queue.getJob(executionId);
+  const payload = bullJob?.data;
+  if (!payload?.jobId || payload.executionId !== executionId) return;
+
+  const current = await prisma.job.findUnique({ where: { id: payload.jobId } });
+  if (!current || current.currentExecutionId !== executionId) return;
+  if (current.status === 'COMPLETED' || current.status === 'FAILED') return;
+
+  const execution = await prisma.jobExecution.findUnique({ where: { id: executionId } });
+  const stalls = Math.max(1, bullJob?.stalledCounter ?? 1);
+  await prisma.jobEvent.create({
+    data: {
+      jobId: current.id,
+      eventType: 'STALLED',
+      message: `Execution ${execution?.number ?? current.executionNumber} stalled (${stalls}). BullMQ will run this same execution again until the stall limit is reached.`,
+      metadata: { executionId, stalledCount: stalls, executionNumber: execution?.number ?? current.executionNumber },
+    },
+  });
+  await notifier.publish(current.id, 'STALLED');
+}
+
+function crashOnce(options: CsvAnalysisOptions | undefined, point: CrashPoint, attemptsMade: number): void {
+  if (options?.crashAt === point && attemptsMade === 0) {
+    throw new Error(`Simulated crash at ${point}`);
+  }
+}
+
+async function hangIfFault(options: CsvAnalysisOptions | undefined, stalls: number): Promise<void> {
+  if (options?.fault === 'stall-forever' || (options?.fault === 'stall-once' && stalls === 0)) {
+    await new Promise(() => {});
+  }
 }
 
 function demoFailureMessage(

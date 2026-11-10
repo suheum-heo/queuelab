@@ -29,6 +29,7 @@ export class JobDetailComponent {
   readonly live = computed(() => (this.realtime.connected() ? 'Live' : 'Reconnecting'));
   readonly retrying = signal(false);
   readonly canRetry = computed(() => this.job()?.status === 'FAILED' && this.job()?.seeded === false);
+  readonly recoveryNote = computed(() => recoveryNote(this.job(), this.events()));
   readonly report = computed(() => readReport(this.result()?.summary));
 
   constructor() {
@@ -102,6 +103,18 @@ export class JobDetailComponent {
       }),
     );
   }
+}
+
+function recoveryNote(job: JobView | null, events: JobEventView[]): string | null {
+  if (!job || job.seeded) return null;
+  if (job.status === 'PENDING_ENQUEUE') {
+    return 'This execution is saved but not queued yet. The reconciler submits the same execution if it stays pending.';
+  }
+  const stalled = events.some((event) => event.eventType === 'STALLED');
+  if (stalled && (job.status === 'PROCESSING' || job.status === 'RETRYING' || job.status === 'QUEUED')) {
+    return 'A worker stalled on this execution. BullMQ runs it again until the stall limit is reached, then the job fails.';
+  }
+  return null;
 }
 
 function readReport(summary: unknown): AnalysisReport | null {

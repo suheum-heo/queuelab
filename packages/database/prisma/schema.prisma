@@ -50,6 +50,8 @@ model Job {
   options            Json?
   executionNumber    Int       @default(0) @map("execution_number")
   currentExecutionId String?   @unique @map("current_execution_id") @db.Uuid
+  /// Set while a reconciler owns this row. A second reconciler waits until the lease expires.
+  enqueueClaimedAt   DateTime? @map("enqueue_claimed_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   startedAt          DateTime? @map("started_at")
   finishedAt         DateTime? @map("finished_at")
@@ -79,6 +81,7 @@ model JobExecution {
 
   @@unique([jobId, number])
   @@index([jobId, createdAt])
+  @@index([status, createdAt])
   @@map("job_executions")
 }
 

@@ -34,6 +34,10 @@
     <p class="banner" role="alert">{{ job()!.errorMessage }}</p>
   }
 
+  @if (recoveryNote(); as note) {
+    <p class="help">{{ note }}</p>
+  }
+
   <section class="panel">
     <div class="progress-line">
       <app-progress [value]="job()!.progress" [status]="job()!.status" />

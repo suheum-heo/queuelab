@@ -18,14 +18,16 @@ Creating a job:
 
 1. Store the CSV under `storage/uploads/{id}.csv`. The API accepts up to 10 MB and keeps that body in memory only long enough to write it. The original name is display text. The storage name is the id, so a filename cannot leave the storage directory.
 2. Insert the job row as `PENDING_ENQUEUE`, pointing at that file.
-3. Add a BullMQ job whose id is the same UUID and whose payload is the storage key.
+3. Add a BullMQ job whose id is the execution id and whose payload is the storage key.
 4. Mark the row `QUEUED` only after Redis accepts it.
 
-If enqueue fails, the API returns 503 and leaves the row pending. It never claims the job was queued. A reconciler for stranded `PENDING_ENQUEUE` rows is not built yet.
+If enqueue fails, the API returns 503 and leaves the row pending. It never claims the job was queued. A reconciler in the API claims pending rows older than 15 seconds with a conditional update, checks Redis for that same execution id, and marks the row queued only after Redis has it. Two API processes cannot enqueue the same row at once.
 
 The worker opens the CSV as a stream. It folds each row into running totals and drops the row. It does not load the file into one string. Amounts are accumulated in integer cents. Invalid rows are counted, and at most 20 reasons are stored. A file that still has valid rows completes. An empty file, a missing required column, a broken quote, or a file where every row is invalid is a permanent error: BullMQ does not spend the remaining retries on it. A later read error that is not a missing file is thrown normally so BullMQ can retry.
 
-The worker is safe to run more than once for the same execution. A completed execution returns immediately. Each attempt reads the CSV from the start. The report is written to a temporary file and renamed over `results/{jobId}.json` only after this execution still owns the job. `job_results.job_id` is unique, so a later success replaces the summary instead of inserting a second result.
+The worker is safe to run more than once for the same execution. A completed execution returns immediately. Each attempt reads the CSV from the start. The report is written to `results/{jobId}/{executionId}.json` before the ledger commit, and only while that execution is still current. A newer execution has a different file, so a late writer cannot replace it. `job_results.job_id` is unique, so a later success replaces the summary instead of inserting a second result.
+
+BullMQ notices when a worker dies with the lock unrenewed. It runs that same execution again. `BULLMQ_MAX_STALLED_COUNT` defaults to 1, so one crash is recovered and a second stall fails the execution. The ledger records the stall and, if the limit is passed, the failure. It does not keep retrying forever.
 
 A job id is stable. An execution id is one manual run, and it is also the BullMQ job id. Reusing the job id would collide with the failed queue record. Automatic retries stay inside that execution: attempt 1 can throw, and attempt 2 reads the file again. `POST /jobs/:id/retry` is only for a failed job. It claims the row with `UPDATE ... WHERE status = 'FAILED'`, so a double click creates one new execution. The worker writes the final result only while its execution is still current.
 
@@ -71,7 +73,7 @@ Unit tests cover cursor pagination, row validation, and a streaming parse of a t
 
 ## Not in this slice
 
-- Cancellation and pending-enqueue reconciliation
+- Cancellation
 - Authentication and owner checks
 - CI, browser end-to-end tests, and deployment
 

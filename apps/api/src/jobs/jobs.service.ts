@@ -13,6 +13,7 @@ import {
   decodeCursor,
   encodeCursor,
   isSeededJob,
+  isStoredReportKey,
   type CsvAnalysisOptions,
   type DemoFailure,
   type JobEventPage,
@@ -44,7 +45,7 @@ export class JobsService {
    * Insert the row, then enqueue. These are not one transaction.
    * The row stays PENDING_ENQUEUE until BullMQ accepts the job id.
    * A failed enqueue is returned as 503 and is not described as queued.
-   * Reconciliation of stranded PENDING_ENQUEUE rows is a later milestone.
+   * The reconciler later claims the same execution id and tries Redis again.
    */
   async create(dto: CreateJobDto) {
     if (dto.type !== 'CSV_ANALYSIS') {
@@ -331,7 +332,8 @@ export class JobsService {
     });
     if (!job?.result) throw new NotFoundException('Report not found');
 
-    const key = `results/${job.id}.json`;
+    const key =
+      job.resultKey && isStoredReportKey(job.resultKey) ? job.resultKey : `results/${job.id}.json`;
     const filename = `report-${job.id}.json`;
     try {
       return { filename, body: await this.storage.read(key) };

@@ -6,10 +6,10 @@ loadEnv({ path: resolve(findRepoRoot(__dirname), '.env') });
 
 import { createPrismaClient } from '@queuelab/database';
 import { resolveCsvAnalysisQueue, type CsvAnalysisPayload } from '@queuelab/shared-types';
-import { Worker } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { createJobNotifier } from './job-notifier';
-import { markFailed, processCsvJob } from './process-csv-job';
+import { markFailed, processCsvJob, recordWorkerStall } from './process-csv-job';
 
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -23,16 +23,30 @@ async function main(): Promise<void> {
   const concurrency = Number(process.env.WORKER_CONCURRENCY ?? 2);
 
   const queueName = resolveCsvAnalysisQueue();
+  const queueConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const queue = new Queue<CsvAnalysisPayload>(queueName, { connection: queueConnection });
   const worker = new Worker<CsvAnalysisPayload>(
     queueName,
     (job) => processCsvJob(prisma, job, storage, notifier),
-    { connection, concurrency },
+    {
+      connection,
+      concurrency,
+      lockDuration: positiveFromEnv('BULLMQ_LOCK_DURATION_MS', 30_000),
+      stalledInterval: positiveFromEnv('BULLMQ_STALLED_INTERVAL_MS', 30_000),
+      maxStalledCount: countFromEnv('BULLMQ_MAX_STALLED_COUNT', 1),
+    },
   );
 
   worker.on('failed', (job, error) => {
     if (!job) return;
     void markFailed(prisma, job, error, notifier).catch((recordError: unknown) => {
       console.error('[worker] could not record failure', recordError);
+    });
+  });
+
+  worker.on('stalled', (executionId) => {
+    void recordWorkerStall(prisma, queue, executionId, notifier).catch((recordError: unknown) => {
+      console.error('[worker] could not record stall', recordError);
     });
   });
 
@@ -48,9 +62,11 @@ async function main(): Promise<void> {
     closing = true;
     console.log('[worker] shutting down');
     await worker.close();
+    await queue.close();
     await notifier.close();
     await prisma.$disconnect();
     await connection.quit();
+    await queueConnection.quit();
     process.exit(0);
   };
 
@@ -59,3 +75,13 @@ async function main(): Promise<void> {
 }
 
 void main();
+
+function positiveFromEnv(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function countFromEnv(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
