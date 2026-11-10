@@ -16,10 +16,18 @@
     "db:seed": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database seed",
     "docker:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker-compose.yml down",
+    "typecheck": "pnpm --filter @queuelab/shared-types exec tsc --noEmit && pnpm --filter @queuelab/database exec tsc --noEmit && pnpm --filter @queuelab/api exec tsc --noEmit -p tsconfig.json && pnpm --filter @queuelab/worker exec tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "secrets": "node scripts/check-secrets.mjs",
+    "db:validate": "pnpm --filter @queuelab/database exec prisma validate",
+    "db:deploy": "pnpm --filter @queuelab/database exec prisma migrate deploy",
     "test": "pnpm --filter @queuelab/shared-types build && pnpm --filter @queuelab/database build && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.14.0",
+    "typescript-eslint": "^8.72.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

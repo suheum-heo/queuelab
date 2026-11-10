@@ -107,7 +107,8 @@ function cookieOptions(request: Request, maxAgeMs: number) {
 }
 
 function cookieSecure(request: Request): boolean {
-  if (process.env.COOKIE_SECURE === 'true') return true;
+  if (process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true') return true;
+  if (process.env.COOKIE_SECURE === 'false') return false;
   const forwarded = request.headers['x-forwarded-proto'];
   return request.secure || forwarded === 'https';
 }

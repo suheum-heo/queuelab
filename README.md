@@ -50,7 +50,7 @@ pnpm dev
 - API docs: http://localhost:3000/api/docs
 - Health: http://localhost:3000/api/v1/health
 
-Sign in from the app. With `OIDC_ISSUER` unset, the API serves a local OpenID page and asks for an email. The first sign-in as `demo@queuelab.dev` links the seeded user. Any other email gets an empty ledger. The ID token is stored in an HttpOnly cookie and checked on every API and socket request. Set `OIDC_ISSUER` to a real provider before a public deployment. `NODE_ENV=production` will not boot while that variable is empty.
+Sign in from the app. With `OIDC_ISSUER` unset, the API serves a local OpenID page and asks for an email. That page is only answered when the request host is `localhost`, `127.0.0.1`, or `::1`. The first sign-in as `demo@queuelab.dev` links the seeded user. Any other email gets an empty ledger. The ID token is stored in an HttpOnly, SameSite=Lax cookie and checked on every API and socket request. Cookie mutations also require the `X-QueueLab-Request` header and an `Origin` that matches `WEB_ORIGIN`. Production refuses to boot unless `OIDC_ISSUER`, `OIDC_REDIRECT_URI`, and `WEB_ORIGIN` are https, `OIDC_CLIENT_ID` is set, and `AUTH_COOKIE_SECRET` is at least 16 characters. Production cookies are always Secure. The token check requires the configured issuer, the client id as the audience, a valid signature, and an unexpired `exp`. The callback also checks `state`, PKCE, and `nonce`.
 
 `pnpm docker:up` starts PostgreSQL and Redis. The API, worker, and Angular run on the host so they can reload. A PostgreSQL 17 and Redis already listening on `localhost:5432` and `localhost:6379` work with the same `.env`. `docker compose -f infrastructure/docker-compose.yml --profile full up --build` runs the API and worker in containers instead.
 
@@ -60,9 +60,43 @@ Seeded jobs are labeled Sample. They are ledger rows only, so their progress doe
 
 ```bash
 pnpm test
+pnpm --filter @queuelab/web test
 ```
 
-Unit tests cover cursor pagination, row validation, and a streaming parse of a temporary CSV, including a broken quote and a second read of the same file.
+`pnpm test` builds the shared packages, then runs the shared-type tests, the worker tests, and the API tests. The API tests start their own Nest process and need PostgreSQL and Redis. Angular tests cover the return path used after sign-in.
+
+## CI
+
+GitHub Actions runs on every push and pull request. The workflow is `.github/workflows/ci.yml`. One job installs with a frozen lockfile, typechecks, lints, scans tracked files for secrets, validates the Prisma schema, applies migrations to a disposable PostgreSQL, and runs the API, worker, and Angular tests plus the production web build. A second job builds the API, worker, and web images and does not push them. Deploy is a separate step after those checks pass.
+
+The runner sets:
+
+| Variable | CI value |
+| --- | --- |
+| `DATABASE_URL` | `postgresql://queuelab:queuelab@localhost:5432/queuelab?schema=public` |
+| `REDIS_URL` | `redis://localhost:6379` |
+| `WEB_ORIGIN` | `http://localhost:4200` |
+| `DEMO_USER_EMAIL` | `demo@queuelab.dev` |
+
+`OIDC_ISSUER` stays empty so the tests use the local issuer on `127.0.0.1`.
+
+The same checks can be run locally:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build:packages
+pnpm typecheck
+pnpm lint
+pnpm secrets
+pnpm db:validate
+pnpm db:deploy
+pnpm test
+pnpm --filter @queuelab/web test
+pnpm --filter @queuelab/web build
+pnpm audit --audit-level high
+```
+
+`pnpm db:deploy` applies committed migrations to whatever `DATABASE_URL` is set. Point it at a disposable database.
 
 ## Layout
 
@@ -76,6 +110,6 @@ Unit tests cover cursor pagination, row validation, and a streaming parse of a t
 ## Not in this slice
 
 - Cancellation
-- CI, browser end-to-end tests, and deployment
+- Browser end-to-end tests and deployment
 
 The checklist and the reasons for these choices are in [docs/roadmap.md](docs/roadmap.md).

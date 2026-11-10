@@ -1,3 +1,5 @@
+import { assertProductionConfig } from './production-config';
+
 export interface OidcSettings {
   issuer: string;
   clientId: string;
@@ -8,16 +10,14 @@ export interface OidcSettings {
 }
 
 /**
- * An empty OIDC_ISSUER keeps the local sign-in page. A public deployment sets a
- * real issuer. Production refuses to boot without one, so the local page cannot
- * mint a token for any email on the internet.
+ * An empty OIDC_ISSUER keeps the local sign-in page on localhost only.
+ * Production refuses to boot unless the issuer, origin, redirect, and cookie
+ * secret are all set for HTTPS.
  */
 export function oidcSettings(): OidcSettings {
+  assertProductionConfig();
   const port = process.env.PORT ?? '3000';
   const configured = process.env.OIDC_ISSUER?.trim() ?? '';
-  if (!configured && process.env.NODE_ENV === 'production') {
-    throw new Error('OIDC_ISSUER is required when NODE_ENV is production');
-  }
 
   const clientId = process.env.OIDC_CLIENT_ID?.trim() || 'queuelab';
   const webOrigin = (process.env.WEB_ORIGIN ?? 'http://localhost:4200').replace(/\/$/, '');

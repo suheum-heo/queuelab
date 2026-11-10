@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { createRemoteJWKSet, jwtVerify, type KeyLike } from 'jose';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from './auth-user';
-import { DevOidcService, normalizeEmail } from './dev-oidc.service';
+import { DevOidcService } from './dev-oidc.service';
 import { oidcSettings, type OidcSettings } from './oidc-settings';
+import { claimsFromPayload, oidcVerifyOptions, verifyOidcToken } from './verify-claims';
 
 interface Discovery {
   issuer: string;
@@ -98,23 +99,9 @@ export class TokenService {
 
   private async readIdentity(token: string, nonce?: string): Promise<Identity> {
     const settings = oidcSettings();
-    const options = {
-      issuer: settings.issuer,
-      audience: settings.clientId,
-      clockTolerance: 5,
-    };
-    const { payload } = settings.dev
-      ? await jwtVerify(token, this.localKey(), options)
-      : await jwtVerify(token, await this.remoteKey(settings), options);
-    const email = normalizeEmail(payload.email);
-    if (!payload.sub || !email) throw new Error('Token is missing a subject or email');
-    if (nonce !== undefined && payload.nonce !== nonce) throw new Error('Token nonce does not match');
-    const exp = typeof payload.exp === 'number' ? payload.exp : 0;
-    return {
-      sub: payload.sub,
-      email,
-      maxAgeMs: Math.max(0, exp * 1000 - Date.now()),
-    };
+    if (settings.dev) return verifyOidcToken(token, this.localKey(), settings, nonce);
+    const { payload } = await jwtVerify(token, await this.remoteKey(settings), oidcVerifyOptions(settings));
+    return claimsFromPayload(payload, nonce);
   }
 
   private localKey(): KeyLike {

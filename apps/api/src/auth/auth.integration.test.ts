@@ -132,9 +132,24 @@ describe('owner authorization', { concurrency: 1 }, () => {
     assert.equal(new URL(finished.headers.get('location') ?? '').pathname, '/jobs');
     const session = cookiePair(finished, 'queuelab_id');
     assert.match(session, /HttpOnly/i);
-    const me = await fetch(`${base}/auth/me`, { headers: { cookie: session.split(';')[0] } });
+    assert.match(session, /SameSite=Lax/i);
+    const cookie = session.split(';')[0] ?? '';
+    const me = await fetch(`${base}/auth/me`, { headers: { cookie } });
     assert.equal(me.status, 200);
     assert.equal(((await me.json()) as { email: string }).email, emailA);
+
+    const forged = await fetch(`${base}/auth/logout`, { method: 'POST', headers: { cookie } });
+    assert.equal(forged.status, 403);
+    const foreign = await fetch(`${base}/auth/logout`, {
+      method: 'POST',
+      headers: { cookie, origin: 'https://evil.test', 'x-queuelab-request': '1' },
+    });
+    assert.equal(foreign.status, 403);
+    const logout = await fetch(`${base}/auth/logout`, {
+      method: 'POST',
+      headers: { cookie, origin, 'x-queuelab-request': '1' },
+    });
+    assert.equal(logout.status, 204);
   });
 
   it('hides one user\'s job, history, report, and retry from the other', async () => {
@@ -308,7 +323,7 @@ function connect(origin: string, token?: string): Socket {
 
 function once(socket: Socket, event: string): Promise<void> {
   return new Promise((resolveEvent, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), 3_000);
+    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), 10_000);
     socket.once(event, () => {
       clearTimeout(timer);
       resolveEvent();

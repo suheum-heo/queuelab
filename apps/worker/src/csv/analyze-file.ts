@@ -24,7 +24,7 @@ export async function analyzeCsvFile(
   options: { delimiter: string; hasHeader: boolean },
   onProgress?: (progress: CsvProgress) => Promise<void>,
 ): Promise<AnalysisReport> {
-  let size = 0;
+  let size: number;
   try {
     size = (await stat(filePath)).size;
   } catch (error) {

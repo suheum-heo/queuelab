@@ -1,0 +1,93 @@
+# Validates the build, tests, migrations, and images.
+# Deployment is a separate workflow, after production configuration is validated.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://queuelab:queuelab@localhost:5432/queuelab?schema=public
+  REDIS_URL: redis://localhost:6379
+  WEB_ORIGIN: http://localhost:4200
+  DEMO_USER_EMAIL: demo@queuelab.dev
+
+jobs:
+  verify:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: queuelab
+          POSTGRES_PASSWORD: queuelab
+          POSTGRES_DB: queuelab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U queuelab -d queuelab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared packages
+        run: pnpm build:packages
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Scan for committed secrets
+        run: pnpm secrets
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+      - name: Apply Prisma migrations
+        run: pnpm db:deploy
+      - name: Test API, worker, and shared packages
+        run: pnpm test
+      - name: Test Angular
+        run: pnpm --filter @queuelab/web test
+      - name: Build Angular for production
+        run: pnpm --filter @queuelab/web build
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+
+  images:
+    name: Build container images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the API image
+        run: docker build -f infrastructure/Dockerfiles/api.Dockerfile -t queuelab-api .
+      - name: Build the worker image
+        run: docker build -f infrastructure/Dockerfiles/worker.Dockerfile -t queuelab-worker .
+      - name: Build the web image
+        run: docker build -f infrastructure/Dockerfiles/web.Dockerfile -t queuelab-web .

@@ -11,6 +11,7 @@ import {
 } from './cookies';
 import { CurrentUser } from './current-user.decorator';
 import { oidcSettings } from './oidc-settings';
+import { isIsolatedDevHost } from './production-config';
 import { Public } from './public.decorator';
 
 @ApiTags('auth')
@@ -22,6 +23,12 @@ export class AuthController {
   @Public()
   @ApiOperation({ summary: 'Start the OpenID authorization-code flow' })
   login(@Query('return') returnTo: string | undefined, @Req() request: Request, @Res() response: Response): void {
+    const settings = oidcSettings();
+    const host = Array.isArray(request.headers.host) ? request.headers.host[0] : request.headers.host;
+    if (settings.dev && !isIsolatedDevHost(host)) {
+      response.status(404).type('text').send('Local sign-in is only available from localhost.');
+      return;
+    }
     const begun = this.auth.begin(returnTo);
     writeOidcCookie(response, request, begun.cookie);
     response.redirect(begun.url);

@@ -37,7 +37,7 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 
 - [x] Add authentication and owner-based authorization
 - [ ] Write integration and browser end-to-end tests
-- [ ] Configure GitHub Actions CI
+- [x] Configure GitHub Actions CI
 - [ ] Deploy frontend, API, worker, PostgreSQL, and Redis
 - [ ] Record performance measurements and a demo video
 - [ ] Finish the system diagram and architectural tradeoff notes
@@ -49,7 +49,7 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
 | M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Done. Live updates, manual retry, and crash recovery work |
-| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication and owner checks work. CI and deployment are still open |
+| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication, owner checks, and GitHub Actions CI are in place. Deployment is still open |
 
 ## Engineering notes
 
@@ -62,6 +62,6 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 - **Stalled workers stay inside BullMQ.** Lock duration and the stall check default to 30 seconds. One stall reruns the execution. `BULLMQ_MAX_STALLED_COUNT` defaults to 1, so the next stall fails it and the ledger copies that failure. A queue record that has vanished, or a completion whose result is already stored, is repaired by the same reconciler. It does not invent a second execution.
 - **Job, execution, attempt.** `jobId` is the logical row. `executionId` is one manual run and the BullMQ job id, because a failed queue id cannot be added again. `attempt` is BullMQ's automatic try inside that execution. A conditional update claims a failed job, so two retry requests create one execution. The worker upserts `JobResult` only while its execution is still current.
 - **Transient means the next attempt can succeed.** `demoFailure: transient` throws on attempt 1 only. A broken CSV is `UnrecoverableError` and stops at attempt 1. `exhaust-first-execution` fails every automatic attempt of execution 1 so a manual retry can be tested after the attempt budget is gone.
-- **The token is the boundary.** The Angular guard only chooses which page to show. Nest checks the OpenID ID token on every job, upload, metric, and download, and the socket handshake uses that same check. A job room is joined only when `user_id` matches. The ledger room is `user:{id}`, so one visitor does not receive another visitor's notices. The local issuer exists only while `OIDC_ISSUER` is empty.
+- **The token is the boundary.** The Angular guard only chooses which page to show. Nest checks the OpenID ID token on every job, upload, metric, and download, and the socket handshake uses that same check. Verification requires the issuer, the client id as audience, the signature, and `exp`. The callback also checks `state`, PKCE, and `nonce`. A job room is joined only when `user_id` matches. The ledger room is `user:{id}`, so one visitor does not receive another visitor's notices. The local issuer exists only while `OIDC_ISSUER` is empty, and only for a loopback `Host`. Production also requires https origins and a cookie secret of at least 16 characters, and it sets the cookie `Secure`. Cookie mutations need `X-QueueLab-Request` plus an `Origin` matching `WEB_ORIGIN`. `SameSite` stays `Lax` because the provider returns with a top-level navigation.
 - **Sockets notify, PostgreSQL decides.** BullMQ QueueEvents can fire before the ledger write is visible. The worker publishes only after that write commits. The browser throws the notice away and rereads `/jobs/:id`. Reconnect joins the room again and rereads, which covers a laptop that slept through the completion. While the socket is down, the page falls back to a two-second poll. One API process owns the Socket.IO rooms; a second API instance would need a Socket.IO Redis adapter.
 

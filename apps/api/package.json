@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "test": "nest build && tsx --test src/auth/auth.integration.test.ts src/jobs/retry.integration.test.ts src/jobs/recovery.integration.test.ts"
+    "test": "nest build && tsx --test src/auth/security.test.ts src/auth/auth.integration.test.ts src/jobs/retry.integration.test.ts src/jobs/recovery.integration.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.4.0",

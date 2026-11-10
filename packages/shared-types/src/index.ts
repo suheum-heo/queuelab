@@ -249,6 +249,10 @@ export interface JobEventPage {
   nextCursor: string | null;
 }
 
+/** Sent on cookie-authenticated mutations so a foreign site cannot reuse the session. */
+export const CSRF_HEADER = 'x-queuelab-request';
+export const CSRF_HEADER_VALUE = '1';
+
 export interface JobResultView {
   id: string;
   jobId: string;

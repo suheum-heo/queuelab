@@ -1,7 +1,13 @@
+.git
+.github
 node_modules
 **/node_modules
+dist
 **/dist
-**/.angular
-.git
-storage
+.angular
+coverage
+.env
 **/.env
+storage
+*.log
+.DS_Store
