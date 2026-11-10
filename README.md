@@ -98,6 +98,37 @@ pnpm audit --audit-level high
 
 `pnpm db:deploy` applies committed migrations to whatever `DATABASE_URL` is set. Point it at a disposable database.
 
+## Performance
+
+Local measurements from [docs/benchmarks.md](docs/benchmarks.md), taken on an Apple M5 with 16 GiB of memory, Homebrew PostgreSQL 17, and Redis 8. Each of 20 jobs analyzed the same 280,000-row CSV (7.3 MB). `pnpm dev` was also running.
+
+```mermaid
+xychart-beta
+    title "Jobs completed per minute"
+    x-axis "Worker processes" [1, 2, 4, 8]
+    y-axis "Jobs per minute" 0 --> 400
+    bar [93.7, 192, 320.8, 351.4]
+```
+
+```mermaid
+xychart-beta
+    title "Median processing time"
+    x-axis "Worker processes" [1, 2, 4, 8]
+    y-axis "Milliseconds" 0 --> 1500
+    bar [629, 615, 734, 1242]
+```
+
+| Workers | Jobs/min | Submit p50 / p95 | Queue wait p50 / p95 | Process p50 / p95 |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 93.7 | 6 ms / 8 ms | 5.8 s / 11.4 s | 629 ms / 671 ms |
+| 2 | 192.0 | 5 ms / 7 ms | 2.6 s / 5.5 s | 615 ms / 680 ms |
+| 4 | 320.8 | 6 ms / 11 ms | 1.6 s / 2.9 s | 734 ms / 800 ms |
+| 8 | 351.4 | 13 ms / 21 ms | 1.3 s / 2.4 s | 1,242 ms / 1,329 ms |
+
+Eight processes finished 3.75 times as many jobs per minute as one process. At eight, each job took about twice as long to process.
+
+Killing the worker at 23% progress, then starting a replacement immediately, took 30.8 seconds, 60.9 seconds, and 60.9 seconds to reach a completed job. Rereading the file was about 0.65 seconds of that. The rest is BullMQ's 30 second lock and 30 second stall check. Repeat the run with `pnpm bench`.
+
 ## Production
 
 `render.yaml` is the public deployment, and it is not applied yet. The Angular image is the only public HTTPS service. Nginx proxies `/api` and `/socket.io` to the private API using Render's `hostport` for that service, so the address is the internal hostname Render assigns rather than a guessed name. A separate worker reads the same Redis queue. PostgreSQL and Key Value are managed. CSV uploads and JSON reports go to object storage.

@@ -1,0 +1,908 @@
+{
+  "measuredAt": "2026-11-10T05:49:05.673Z",
+  "hardware": {
+    "cpu": "Apple M5",
+    "logicalCpus": 10,
+    "memoryBytes": 17179869184,
+    "loadAtStart": 5.91552734375,
+    "node": "v22.23.1",
+    "platform": "darwin 25.2.0",
+    "postgres": "PostgreSQL 17.11 (Homebrew) on aarch64-apple-darwin25.6.0",
+    "postgresMaxConnections": "100",
+    "postgresSessionsAtStart": 7,
+    "redis": "8.10.2"
+  },
+  "file": {
+    "rows": 280000,
+    "invalidRows": 5600,
+    "bytes": 7252031,
+    "sha256": "21095bda4ac2bfe57883b1698041f0c55a4287926f24d3c47500f634ccc83ede",
+    "probeMs": 354,
+    "calibrationMs": 698
+  },
+  "procedure": {
+    "jobsPerRun": 20,
+    "workerCounts": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "workerConcurrency": 1,
+    "queue": "csv-analysis-bench-54599",
+    "databasePoolMax": {
+      "api": 5,
+      "worker": 2
+    },
+    "stall": {
+      "lockDurationMs": 30000,
+      "stalledIntervalMs": 30000,
+      "maxStalledCount": 1
+    },
+    "percentile": "nearest-rank, rank = ceil(p/100 * n)"
+  },
+  "runs": [
+    {
+      "workers": 1,
+      "jobs": 20,
+      "makespanMs": 12810,
+      "jobsPerMinute": 93.6768149882904,
+      "submit": {
+        "n": 20,
+        "p50": 6,
+        "p95": 8,
+        "min": 4,
+        "max": 9
+      },
+      "queueWait": {
+        "n": 20,
+        "p50": 5791,
+        "p95": 11442,
+        "min": 46,
+        "max": 12089
+      },
+      "process": {
+        "n": 20,
+        "p50": 629,
+        "p95": 671,
+        "min": 587,
+        "max": 679
+      },
+      "samples": [
+        {
+          "id": "fd508b25-2b87-4fdc-a344-cff32c2d1fab",
+          "submitMs": 8,
+          "queueWaitMs": 46,
+          "processMs": 671,
+          "createdAt": "2026-11-10T05:46:04.019Z",
+          "startedAt": "2026-11-10T05:46:04.069Z",
+          "finishedAt": "2026-11-10T05:46:04.740Z"
+        },
+        {
+          "id": "c56fbe3a-5014-441f-8467-fd0b9b3104d0",
+          "submitMs": 6,
+          "queueWaitMs": 718,
+          "processMs": 679,
+          "createdAt": "2026-11-10T05:46:04.027Z",
+          "startedAt": "2026-11-10T05:46:04.747Z",
+          "finishedAt": "2026-11-10T05:46:05.426Z"
+        },
+        {
+          "id": "3c7c4aa5-2dc6-451b-b639-bbee7ae2b230",
+          "submitMs": 6,
+          "queueWaitMs": 1393,
+          "processMs": 649,
+          "createdAt": "2026-11-10T05:46:04.033Z",
+          "startedAt": "2026-11-10T05:46:05.428Z",
+          "finishedAt": "2026-11-10T05:46:06.077Z"
+        },
+        {
+          "id": "809c1288-0c72-4268-ae7b-1dcfcd6f3a44",
+          "submitMs": 6,
+          "queueWaitMs": 2039,
+          "processMs": 635,
+          "createdAt": "2026-11-10T05:46:04.039Z",
+          "startedAt": "2026-11-10T05:46:06.080Z",
+          "finishedAt": "2026-11-10T05:46:06.715Z"
+        },
+        {
+          "id": "1000e846-c2d5-4eb9-8a72-aaa653bf3848",
+          "submitMs": 6,
+          "queueWaitMs": 2671,
+          "processMs": 633,
+          "createdAt": "2026-11-10T05:46:04.044Z",
+          "startedAt": "2026-11-10T05:46:06.718Z",
+          "finishedAt": "2026-11-10T05:46:07.351Z"
+        },
+        {
+          "id": "ff71c0d2-f068-4528-93a2-3bda9152f508",
+          "submitMs": 5,
+          "queueWaitMs": 3302,
+          "processMs": 623,
+          "createdAt": "2026-11-10T05:46:04.050Z",
+          "startedAt": "2026-11-10T05:46:07.354Z",
+          "finishedAt": "2026-11-10T05:46:07.977Z"
+        },
+        {
+          "id": "f0c5aeca-439c-437a-ae1d-ebb28203f6bf",
+          "submitMs": 6,
+          "queueWaitMs": 3923,
+          "processMs": 625,
+          "createdAt": "2026-11-10T05:46:04.055Z",
+          "startedAt": "2026-11-10T05:46:07.981Z",
+          "finishedAt": "2026-11-10T05:46:08.606Z"
+        },
+        {
+          "id": "6906f093-d39f-4a83-bcb4-3e7624e50b33",
+          "submitMs": 5,
+          "queueWaitMs": 4546,
+          "processMs": 622,
+          "createdAt": "2026-11-10T05:46:04.061Z",
+          "startedAt": "2026-11-10T05:46:08.609Z",
+          "finishedAt": "2026-11-10T05:46:09.231Z"
+        },
+        {
+          "id": "2a552f66-ac6d-4dee-8857-1b6d40c550d2",
+          "submitMs": 4,
+          "queueWaitMs": 5166,
+          "processMs": 629,
+          "createdAt": "2026-11-10T05:46:04.066Z",
+          "startedAt": "2026-11-10T05:46:09.234Z",
+          "finishedAt": "2026-11-10T05:46:09.863Z"
+        },
+        {
+          "id": "c99d094d-4ef4-48d7-a0e3-c4754c73536c",
+          "submitMs": 9,
+          "queueWaitMs": 5791,
+          "processMs": 625,
+          "createdAt": "2026-11-10T05:46:04.072Z",
+          "startedAt": "2026-11-10T05:46:09.867Z",
+          "finishedAt": "2026-11-10T05:46:10.492Z"
+        },
+        {
+          "id": "fb35bf2b-e648-4483-a8e8-86465a6c9dcc",
+          "submitMs": 5,
+          "queueWaitMs": 6412,
+          "processMs": 666,
+          "createdAt": "2026-11-10T05:46:04.079Z",
+          "startedAt": "2026-11-10T05:46:10.494Z",
+          "finishedAt": "2026-11-10T05:46:11.160Z"
+        },
+        {
+          "id": "545cf908-d18d-43f7-853f-95fd54bf772c",
+          "submitMs": 6,
+          "queueWaitMs": 7076,
+          "processMs": 629,
+          "createdAt": "2026-11-10T05:46:04.085Z",
+          "startedAt": "2026-11-10T05:46:11.163Z",
+          "finishedAt": "2026-11-10T05:46:11.792Z"
+        },
+        {
+          "id": "573b3f53-e702-424d-853f-d9c5544afe5a",
+          "submitMs": 5,
+          "queueWaitMs": 7703,
+          "processMs": 615,
+          "createdAt": "2026-11-10T05:46:04.090Z",
+          "startedAt": "2026-11-10T05:46:11.795Z",
+          "finishedAt": "2026-11-10T05:46:12.410Z"
+        },
+        {
+          "id": "287c3098-014b-41f4-8438-81e79d7aad31",
+          "submitMs": 7,
+          "queueWaitMs": 8315,
+          "processMs": 652,
+          "createdAt": "2026-11-10T05:46:04.095Z",
+          "startedAt": "2026-11-10T05:46:12.414Z",
+          "finishedAt": "2026-11-10T05:46:13.066Z"
+        },
+        {
+          "id": "0cd06353-9e59-4636-8af5-882cb2147af5",
+          "submitMs": 8,
+          "queueWaitMs": 8961,
+          "processMs": 644,
+          "createdAt": "2026-11-10T05:46:04.104Z",
+          "startedAt": "2026-11-10T05:46:13.068Z",
+          "finishedAt": "2026-11-10T05:46:13.712Z"
+        },
+        {
+          "id": "f68a1c24-f7e0-47af-b02b-f0ff50ca09e1",
+          "submitMs": 7,
+          "queueWaitMs": 9602,
+          "processMs": 635,
+          "createdAt": "2026-11-10T05:46:04.110Z",
+          "startedAt": "2026-11-10T05:46:13.715Z",
+          "finishedAt": "2026-11-10T05:46:14.350Z"
+        },
+        {
+          "id": "cb3f0cd4-2013-4486-aa3a-f5412287abe0",
+          "submitMs": 4,
+          "queueWaitMs": 10234,
+          "processMs": 626,
+          "createdAt": "2026-11-10T05:46:04.117Z",
+          "startedAt": "2026-11-10T05:46:14.353Z",
+          "finishedAt": "2026-11-10T05:46:14.979Z"
+        },
+        {
+          "id": "9ff75b30-a338-4544-8140-9ef55d00dfa4",
+          "submitMs": 5,
+          "queueWaitMs": 10857,
+          "processMs": 587,
+          "createdAt": "2026-11-10T05:46:04.122Z",
+          "startedAt": "2026-11-10T05:46:14.981Z",
+          "finishedAt": "2026-11-10T05:46:15.568Z"
+        },
+        {
+          "id": "232d68e8-bbb9-4c08-90aa-1ac6b1070ff0",
+          "submitMs": 6,
+          "queueWaitMs": 11442,
+          "processMs": 649,
+          "createdAt": "2026-11-10T05:46:04.126Z",
+          "startedAt": "2026-11-10T05:46:15.571Z",
+          "finishedAt": "2026-11-10T05:46:16.220Z"
+        },
+        {
+          "id": "f7a0d809-f819-4348-8868-70a9faee2628",
+          "submitMs": 5,
+          "queueWaitMs": 12089,
+          "processMs": 606,
+          "createdAt": "2026-11-10T05:46:04.132Z",
+          "startedAt": "2026-11-10T05:46:16.223Z",
+          "finishedAt": "2026-11-10T05:46:16.829Z"
+        }
+      ]
+    },
+    {
+      "workers": 2,
+      "jobs": 20,
+      "makespanMs": 6249,
+      "jobsPerMinute": 192.03072491598655,
+      "submit": {
+        "n": 20,
+        "p50": 5,
+        "p95": 7,
+        "min": 4,
+        "max": 8
+      },
+      "queueWait": {
+        "n": 20,
+        "p50": 2633,
+        "p95": 5530,
+        "min": 46,
+        "max": 5536
+      },
+      "process": {
+        "n": 20,
+        "p50": 615,
+        "p95": 680,
+        "min": 560,
+        "max": 680
+      },
+      "samples": [
+        {
+          "id": "94edccfa-49f1-4122-b21a-524c6019527c",
+          "submitMs": 8,
+          "queueWaitMs": 48,
+          "processMs": 635,
+          "createdAt": "2026-11-10T05:46:17.311Z",
+          "startedAt": "2026-11-10T05:46:17.363Z",
+          "finishedAt": "2026-11-10T05:46:17.998Z"
+        },
+        {
+          "id": "e0acbffc-4bdb-44d3-9173-334c3916926f",
+          "submitMs": 7,
+          "queueWaitMs": 46,
+          "processMs": 636,
+          "createdAt": "2026-11-10T05:46:17.318Z",
+          "startedAt": "2026-11-10T05:46:17.368Z",
+          "finishedAt": "2026-11-10T05:46:18.004Z"
+        },
+        {
+          "id": "3929a744-fd33-4d01-8139-aaf61b4ac066",
+          "submitMs": 6,
+          "queueWaitMs": 678,
+          "processMs": 648,
+          "createdAt": "2026-11-10T05:46:17.325Z",
+          "startedAt": "2026-11-10T05:46:18.006Z",
+          "finishedAt": "2026-11-10T05:46:18.654Z"
+        },
+        {
+          "id": "b7475adf-0844-4bad-96aa-398b2618a9da",
+          "submitMs": 5,
+          "queueWaitMs": 676,
+          "processMs": 649,
+          "createdAt": "2026-11-10T05:46:17.332Z",
+          "startedAt": "2026-11-10T05:46:18.010Z",
+          "finishedAt": "2026-11-10T05:46:18.659Z"
+        },
+        {
+          "id": "675ad518-0739-4519-9554-45ba4162e7df",
+          "submitMs": 5,
+          "queueWaitMs": 1318,
+          "processMs": 680,
+          "createdAt": "2026-11-10T05:46:17.337Z",
+          "startedAt": "2026-11-10T05:46:18.657Z",
+          "finishedAt": "2026-11-10T05:46:19.337Z"
+        },
+        {
+          "id": "eb8bff43-cb8d-4962-8a8f-4f54f48a1143",
+          "submitMs": 5,
+          "queueWaitMs": 1318,
+          "processMs": 680,
+          "createdAt": "2026-11-10T05:46:17.342Z",
+          "startedAt": "2026-11-10T05:46:18.662Z",
+          "finishedAt": "2026-11-10T05:46:19.342Z"
+        },
+        {
+          "id": "b777483f-650a-4f36-a5e9-e99cad400b3f",
+          "submitMs": 5,
+          "queueWaitMs": 1990,
+          "processMs": 648,
+          "createdAt": "2026-11-10T05:46:17.346Z",
+          "startedAt": "2026-11-10T05:46:19.339Z",
+          "finishedAt": "2026-11-10T05:46:19.987Z"
+        },
+        {
+          "id": "dcfe1997-79c6-4f4a-911a-ca01522ba7b5",
+          "submitMs": 5,
+          "queueWaitMs": 1990,
+          "processMs": 649,
+          "createdAt": "2026-11-10T05:46:17.351Z",
+          "startedAt": "2026-11-10T05:46:19.344Z",
+          "finishedAt": "2026-11-10T05:46:19.993Z"
+        },
+        {
+          "id": "4bf9bec7-43b1-4319-a7e6-6b2d3d1b43e1",
+          "submitMs": 5,
+          "queueWaitMs": 2631,
+          "processMs": 615,
+          "createdAt": "2026-11-10T05:46:17.356Z",
+          "startedAt": "2026-11-10T05:46:19.990Z",
+          "finishedAt": "2026-11-10T05:46:20.605Z"
+        },
+        {
+          "id": "2bd26d63-14d6-4337-9ae6-acb573bba1d9",
+          "submitMs": 5,
+          "queueWaitMs": 2633,
+          "processMs": 615,
+          "createdAt": "2026-11-10T05:46:17.361Z",
+          "startedAt": "2026-11-10T05:46:19.996Z",
+          "finishedAt": "2026-11-10T05:46:20.611Z"
+        },
+        {
+          "id": "b6d6bbb0-2873-43f7-ab32-6e53b01fdbc3",
+          "submitMs": 4,
+          "queueWaitMs": 3241,
+          "processMs": 570,
+          "createdAt": "2026-11-10T05:46:17.366Z",
+          "startedAt": "2026-11-10T05:46:20.608Z",
+          "finishedAt": "2026-11-10T05:46:21.178Z"
+        },
+        {
+          "id": "2c1d6950-f201-4030-bbc8-2685b15235f1",
+          "submitMs": 6,
+          "queueWaitMs": 3241,
+          "processMs": 564,
+          "createdAt": "2026-11-10T05:46:17.371Z",
+          "startedAt": "2026-11-10T05:46:20.614Z",
+          "finishedAt": "2026-11-10T05:46:21.178Z"
+        },
+        {
+          "id": "de2ec52a-2e4a-48db-983b-a7107c366bd9",
+          "submitMs": 6,
+          "queueWaitMs": 3801,
+          "processMs": 561,
+          "createdAt": "2026-11-10T05:46:17.377Z",
+          "startedAt": "2026-11-10T05:46:21.180Z",
+          "finishedAt": "2026-11-10T05:46:21.741Z"
+        },
+        {
+          "id": "ebdecce4-3304-46c7-a70e-1e0c7ceb43b2",
+          "submitMs": 5,
+          "queueWaitMs": 3796,
+          "processMs": 560,
+          "createdAt": "2026-11-10T05:46:17.382Z",
+          "startedAt": "2026-11-10T05:46:21.180Z",
+          "finishedAt": "2026-11-10T05:46:21.740Z"
+        },
+        {
+          "id": "9e0d94d5-0696-4d70-aa75-24ba7a843f92",
+          "submitMs": 4,
+          "queueWaitMs": 4353,
+          "processMs": 571,
+          "createdAt": "2026-11-10T05:46:17.387Z",
+          "startedAt": "2026-11-10T05:46:21.742Z",
+          "finishedAt": "2026-11-10T05:46:22.313Z"
+        },
+        {
+          "id": "0b1ee8ea-7cc0-40b2-bd74-0acb5978f588",
+          "submitMs": 5,
+          "queueWaitMs": 4349,
+          "processMs": 571,
+          "createdAt": "2026-11-10T05:46:17.392Z",
+          "startedAt": "2026-11-10T05:46:21.743Z",
+          "finishedAt": "2026-11-10T05:46:22.314Z"
+        },
+        {
+          "id": "811d18f1-3fe1-4361-956a-1697d927beed",
+          "submitMs": 6,
+          "queueWaitMs": 4917,
+          "processMs": 626,
+          "createdAt": "2026-11-10T05:46:17.396Z",
+          "startedAt": "2026-11-10T05:46:22.316Z",
+          "finishedAt": "2026-11-10T05:46:22.942Z"
+        },
+        {
+          "id": "072014b9-aaaa-4534-a394-a60d772967fa",
+          "submitMs": 5,
+          "queueWaitMs": 4913,
+          "processMs": 625,
+          "createdAt": "2026-11-10T05:46:17.402Z",
+          "startedAt": "2026-11-10T05:46:22.317Z",
+          "finishedAt": "2026-11-10T05:46:22.942Z"
+        },
+        {
+          "id": "7e629263-f28b-45fa-b550-337f017c91d6",
+          "submitMs": 5,
+          "queueWaitMs": 5536,
+          "processMs": 615,
+          "createdAt": "2026-11-10T05:46:17.407Z",
+          "startedAt": "2026-11-10T05:46:22.945Z",
+          "finishedAt": "2026-11-10T05:46:23.560Z"
+        },
+        {
+          "id": "dbf13580-8088-420d-992d-0e66017e0fd3",
+          "submitMs": 6,
+          "queueWaitMs": 5530,
+          "processMs": 615,
+          "createdAt": "2026-11-10T05:46:17.412Z",
+          "startedAt": "2026-11-10T05:46:22.945Z",
+          "finishedAt": "2026-11-10T05:46:23.560Z"
+        }
+      ]
+    },
+    {
+      "workers": 4,
+      "jobs": 20,
+      "makespanMs": 3741,
+      "jobsPerMinute": 320.76984763432233,
+      "submit": {
+        "n": 20,
+        "p50": 6,
+        "p95": 11,
+        "min": 4,
+        "max": 13
+      },
+      "queueWait": {
+        "n": 20,
+        "p50": 1568,
+        "p95": 2916,
+        "min": 47,
+        "max": 2917
+      },
+      "process": {
+        "n": 20,
+        "p50": 734,
+        "p95": 800,
+        "min": 668,
+        "max": 803
+      },
+      "samples": [
+        {
+          "id": "e8bf2d79-278d-45aa-9f08-3bb4b5e89025",
+          "submitMs": 7,
+          "queueWaitMs": 48,
+          "processMs": 803,
+          "createdAt": "2026-11-10T05:46:23.850Z",
+          "startedAt": "2026-11-10T05:46:23.902Z",
+          "finishedAt": "2026-11-10T05:46:24.705Z"
+        },
+        {
+          "id": "d24e4ad1-6455-4b42-8353-8163a1a24874",
+          "submitMs": 6,
+          "queueWaitMs": 48,
+          "processMs": 800,
+          "createdAt": "2026-11-10T05:46:23.857Z",
+          "startedAt": "2026-11-10T05:46:23.907Z",
+          "finishedAt": "2026-11-10T05:46:24.707Z"
+        },
+        {
+          "id": "f5a1a398-39cf-46ec-be62-fa09baab7a01",
+          "submitMs": 5,
+          "queueWaitMs": 47,
+          "processMs": 793,
+          "createdAt": "2026-11-10T05:46:23.862Z",
+          "startedAt": "2026-11-10T05:46:23.911Z",
+          "finishedAt": "2026-11-10T05:46:24.704Z"
+        },
+        {
+          "id": "de59bc3d-1e35-466f-ab0a-7fb2e6db3ba4",
+          "submitMs": 6,
+          "queueWaitMs": 53,
+          "processMs": 792,
+          "createdAt": "2026-11-10T05:46:23.868Z",
+          "startedAt": "2026-11-10T05:46:23.923Z",
+          "finishedAt": "2026-11-10T05:46:24.715Z"
+        },
+        {
+          "id": "3c14157f-fdef-42e8-b419-3e54b78e4bdd",
+          "submitMs": 4,
+          "queueWaitMs": 835,
+          "processMs": 757,
+          "createdAt": "2026-11-10T05:46:23.872Z",
+          "startedAt": "2026-11-10T05:46:24.710Z",
+          "finishedAt": "2026-11-10T05:46:25.467Z"
+        },
+        {
+          "id": "c08579a3-10a9-42e6-be61-8badf3d5795d",
+          "submitMs": 6,
+          "queueWaitMs": 832,
+          "processMs": 760,
+          "createdAt": "2026-11-10T05:46:23.878Z",
+          "startedAt": "2026-11-10T05:46:24.712Z",
+          "finishedAt": "2026-11-10T05:46:25.472Z"
+        },
+        {
+          "id": "bd479101-5465-40c2-acc0-871079670855",
+          "submitMs": 11,
+          "queueWaitMs": 823,
+          "processMs": 758,
+          "createdAt": "2026-11-10T05:46:23.884Z",
+          "startedAt": "2026-11-10T05:46:24.714Z",
+          "finishedAt": "2026-11-10T05:46:25.472Z"
+        },
+        {
+          "id": "fde44e31-25b3-4cca-8cd7-eaf848c6ff73",
+          "submitMs": 6,
+          "queueWaitMs": 829,
+          "processMs": 758,
+          "createdAt": "2026-11-10T05:46:23.895Z",
+          "startedAt": "2026-11-10T05:46:24.726Z",
+          "finishedAt": "2026-11-10T05:46:25.484Z"
+        },
+        {
+          "id": "59fff3b5-182f-4292-a667-e9fb34ad6128",
+          "submitMs": 5,
+          "queueWaitMs": 1568,
+          "processMs": 738,
+          "createdAt": "2026-11-10T05:46:23.901Z",
+          "startedAt": "2026-11-10T05:46:25.470Z",
+          "finishedAt": "2026-11-10T05:46:26.208Z"
+        },
+        {
+          "id": "3b6030cb-7cd2-4ad5-bbb5-cc6760e08185",
+          "submitMs": 5,
+          "queueWaitMs": 1568,
+          "processMs": 734,
+          "createdAt": "2026-11-10T05:46:23.905Z",
+          "startedAt": "2026-11-10T05:46:25.475Z",
+          "finishedAt": "2026-11-10T05:46:26.209Z"
+        },
+        {
+          "id": "5e0823ac-026d-4160-a209-84c87f97c8e8",
+          "submitMs": 5,
+          "queueWaitMs": 1563,
+          "processMs": 737,
+          "createdAt": "2026-11-10T05:46:23.910Z",
+          "startedAt": "2026-11-10T05:46:25.475Z",
+          "finishedAt": "2026-11-10T05:46:26.212Z"
+        },
+        {
+          "id": "3e564876-2d92-4586-a5b2-ea2403733f5b",
+          "submitMs": 6,
+          "queueWaitMs": 1568,
+          "processMs": 732,
+          "createdAt": "2026-11-10T05:46:23.916Z",
+          "startedAt": "2026-11-10T05:46:25.487Z",
+          "finishedAt": "2026-11-10T05:46:26.219Z"
+        },
+        {
+          "id": "c6a7135b-a7e2-4d3b-833d-2bd8cef37e9b",
+          "submitMs": 10,
+          "queueWaitMs": 2284,
+          "processMs": 668,
+          "createdAt": "2026-11-10T05:46:23.922Z",
+          "startedAt": "2026-11-10T05:46:26.211Z",
+          "finishedAt": "2026-11-10T05:46:26.879Z"
+        },
+        {
+          "id": "9d59a22d-704a-4677-8263-6a782d78c399",
+          "submitMs": 6,
+          "queueWaitMs": 2277,
+          "processMs": 672,
+          "createdAt": "2026-11-10T05:46:23.932Z",
+          "startedAt": "2026-11-10T05:46:26.211Z",
+          "finishedAt": "2026-11-10T05:46:26.883Z"
+        },
+        {
+          "id": "8b4e70f4-3d97-432b-9a85-a40266a234aa",
+          "submitMs": 13,
+          "queueWaitMs": 2270,
+          "processMs": 669,
+          "createdAt": "2026-11-10T05:46:23.938Z",
+          "startedAt": "2026-11-10T05:46:26.214Z",
+          "finishedAt": "2026-11-10T05:46:26.883Z"
+        },
+        {
+          "id": "bd7f5120-7d81-41e8-853e-0330baf6ed33",
+          "submitMs": 8,
+          "queueWaitMs": 2268,
+          "processMs": 670,
+          "createdAt": "2026-11-10T05:46:23.949Z",
+          "startedAt": "2026-11-10T05:46:26.222Z",
+          "finishedAt": "2026-11-10T05:46:26.892Z"
+        },
+        {
+          "id": "bfc88e55-8015-48bd-92fc-7418976332ce",
+          "submitMs": 9,
+          "queueWaitMs": 2917,
+          "processMs": 694,
+          "createdAt": "2026-11-10T05:46:23.959Z",
+          "startedAt": "2026-11-10T05:46:26.881Z",
+          "finishedAt": "2026-11-10T05:46:27.575Z"
+        },
+        {
+          "id": "72903359-c38a-4202-bf3b-b482f2976f4f",
+          "submitMs": 6,
+          "queueWaitMs": 2916,
+          "processMs": 693,
+          "createdAt": "2026-11-10T05:46:23.966Z",
+          "startedAt": "2026-11-10T05:46:26.886Z",
+          "finishedAt": "2026-11-10T05:46:27.579Z"
+        },
+        {
+          "id": "0e1534a7-4a0f-40c9-9ea9-5823ab9c0b33",
+          "submitMs": 8,
+          "queueWaitMs": 2908,
+          "processMs": 692,
+          "createdAt": "2026-11-10T05:46:23.974Z",
+          "startedAt": "2026-11-10T05:46:26.886Z",
+          "finishedAt": "2026-11-10T05:46:27.578Z"
+        },
+        {
+          "id": "8da0ac08-6786-4ff2-9520-870a83d0aa8e",
+          "submitMs": 8,
+          "queueWaitMs": 2908,
+          "processMs": 697,
+          "createdAt": "2026-11-10T05:46:23.982Z",
+          "startedAt": "2026-11-10T05:46:26.894Z",
+          "finishedAt": "2026-11-10T05:46:27.591Z"
+        }
+      ]
+    },
+    {
+      "workers": 8,
+      "jobs": 20,
+      "makespanMs": 3415,
+      "jobsPerMinute": 351.39092240117134,
+      "submit": {
+        "n": 20,
+        "p50": 13,
+        "p95": 21,
+        "min": 5,
+        "max": 21
+      },
+      "queueWait": {
+        "n": 20,
+        "p50": 1253,
+        "p95": 2416,
+        "min": 63,
+        "max": 2435
+      },
+      "process": {
+        "n": 20,
+        "p50": 1242,
+        "p95": 1329,
+        "min": 740,
+        "max": 1343
+      },
+      "samples": [
+        {
+          "id": "eaaae713-6693-4d22-9984-a03b0c29fb3d",
+          "submitMs": 7,
+          "queueWaitMs": 69,
+          "processMs": 1343,
+          "createdAt": "2026-11-10T05:46:27.989Z",
+          "startedAt": "2026-11-10T05:46:28.061Z",
+          "finishedAt": "2026-11-10T05:46:29.404Z"
+        },
+        {
+          "id": "9f67a8a7-7221-4162-bed4-f4887d0684b0",
+          "submitMs": 5,
+          "queueWaitMs": 63,
+          "processMs": 1325,
+          "createdAt": "2026-11-10T05:46:27.995Z",
+          "startedAt": "2026-11-10T05:46:28.061Z",
+          "finishedAt": "2026-11-10T05:46:29.386Z"
+        },
+        {
+          "id": "473ed2fd-b693-4630-ab29-ee2e1f227e57",
+          "submitMs": 5,
+          "queueWaitMs": 66,
+          "processMs": 1329,
+          "createdAt": "2026-11-10T05:46:28.001Z",
+          "startedAt": "2026-11-10T05:46:28.069Z",
+          "finishedAt": "2026-11-10T05:46:29.398Z"
+        },
+        {
+          "id": "42bcb5e4-4d46-414e-9192-9e110b8001f9",
+          "submitMs": 8,
+          "queueWaitMs": 75,
+          "processMs": 1299,
+          "createdAt": "2026-11-10T05:46:28.006Z",
+          "startedAt": "2026-11-10T05:46:28.085Z",
+          "finishedAt": "2026-11-10T05:46:29.384Z"
+        },
+        {
+          "id": "269649fb-81fc-4263-87c6-1e1f138c7137",
+          "submitMs": 21,
+          "queueWaitMs": 70,
+          "processMs": 1308,
+          "createdAt": "2026-11-10T05:46:28.014Z",
+          "startedAt": "2026-11-10T05:46:28.101Z",
+          "finishedAt": "2026-11-10T05:46:29.409Z"
+        },
+        {
+          "id": "b696617f-fdc6-457f-a250-749bb6812794",
+          "submitMs": 9,
+          "queueWaitMs": 77,
+          "processMs": 1292,
+          "createdAt": "2026-11-10T05:46:28.038Z",
+          "startedAt": "2026-11-10T05:46:28.117Z",
+          "finishedAt": "2026-11-10T05:46:29.409Z"
+        },
+        {
+          "id": "c6ee5fc9-790c-40a0-b8ac-c3f09b124b63",
+          "submitMs": 8,
+          "queueWaitMs": 70,
+          "processMs": 1292,
+          "createdAt": "2026-11-10T05:46:28.044Z",
+          "startedAt": "2026-11-10T05:46:28.118Z",
+          "finishedAt": "2026-11-10T05:46:29.410Z"
+        },
+        {
+          "id": "b6db3841-94b3-47bb-976c-6831190b2a67",
+          "submitMs": 11,
+          "queueWaitMs": 63,
+          "processMs": 1259,
+          "createdAt": "2026-11-10T05:46:28.054Z",
+          "startedAt": "2026-11-10T05:46:28.122Z",
+          "finishedAt": "2026-11-10T05:46:29.381Z"
+        },
+        {
+          "id": "f3336085-d090-459f-bdce-6f361e75d1c9",
+          "submitMs": 13,
+          "queueWaitMs": 1321,
+          "processMs": 1242,
+          "createdAt": "2026-11-10T05:46:28.065Z",
+          "startedAt": "2026-11-10T05:46:29.393Z",
+          "finishedAt": "2026-11-10T05:46:30.635Z"
+        },
+        {
+          "id": "32c1cb97-f26e-42a9-80f0-20fcaeceeea2",
+          "submitMs": 16,
+          "queueWaitMs": 1306,
+          "processMs": 1271,
+          "createdAt": "2026-11-10T05:46:28.079Z",
+          "startedAt": "2026-11-10T05:46:29.393Z",
+          "finishedAt": "2026-11-10T05:46:30.664Z"
+        },
+        {
+          "id": "ce802274-113e-414d-ba4d-72cf86e96be5",
+          "submitMs": 16,
+          "queueWaitMs": 1294,
+          "processMs": 1240,
+          "createdAt": "2026-11-10T05:46:28.093Z",
+          "startedAt": "2026-11-10T05:46:29.398Z",
+          "finishedAt": "2026-11-10T05:46:30.638Z"
+        },
+        {
+          "id": "b5be9948-732c-4f5f-907b-725ed26ff39a",
+          "submitMs": 13,
+          "queueWaitMs": 1297,
+          "processMs": 1230,
+          "createdAt": "2026-11-10T05:46:28.110Z",
+          "startedAt": "2026-11-10T05:46:29.411Z",
+          "finishedAt": "2026-11-10T05:46:30.641Z"
+        },
+        {
+          "id": "b9719a51-0c8b-4ae2-a87b-8fffd3b0cf7c",
+          "submitMs": 19,
+          "queueWaitMs": 1284,
+          "processMs": 1242,
+          "createdAt": "2026-11-10T05:46:28.124Z",
+          "startedAt": "2026-11-10T05:46:29.419Z",
+          "finishedAt": "2026-11-10T05:46:30.661Z"
+        },
+        {
+          "id": "2aa71ef9-8721-4e71-afef-79cfe5354ae3",
+          "submitMs": 21,
+          "queueWaitMs": 1268,
+          "processMs": 1238,
+          "createdAt": "2026-11-10T05:46:28.140Z",
+          "startedAt": "2026-11-10T05:46:29.423Z",
+          "finishedAt": "2026-11-10T05:46:30.661Z"
+        },
+        {
+          "id": "a9dc9499-88bc-4cf4-9bff-757d279af86a",
+          "submitMs": 20,
+          "queueWaitMs": 1253,
+          "processMs": 1234,
+          "createdAt": "2026-11-10T05:46:28.163Z",
+          "startedAt": "2026-11-10T05:46:29.426Z",
+          "finishedAt": "2026-11-10T05:46:30.660Z"
+        },
+        {
+          "id": "7adf89e0-770a-4fb1-bfb9-0828c8cd3e24",
+          "submitMs": 16,
+          "queueWaitMs": 1235,
+          "processMs": 1241,
+          "createdAt": "2026-11-10T05:46:28.180Z",
+          "startedAt": "2026-11-10T05:46:29.427Z",
+          "finishedAt": "2026-11-10T05:46:30.668Z"
+        },
+        {
+          "id": "bf9d6a70-8af4-4bde-9956-90c4e36a9e4b",
+          "submitMs": 16,
+          "queueWaitMs": 2435,
+          "processMs": 756,
+          "createdAt": "2026-11-10T05:46:28.200Z",
+          "startedAt": "2026-11-10T05:46:30.642Z",
+          "finishedAt": "2026-11-10T05:46:31.398Z"
+        },
+        {
+          "id": "a767b820-e41c-459d-be62-5b93390233ab",
+          "submitMs": 19,
+          "queueWaitMs": 2416,
+          "processMs": 757,
+          "createdAt": "2026-11-10T05:46:28.215Z",
+          "startedAt": "2026-11-10T05:46:30.644Z",
+          "finishedAt": "2026-11-10T05:46:31.401Z"
+        },
+        {
+          "id": "b86d466b-ff6b-43ad-8c55-03afbcaa2463",
+          "submitMs": 12,
+          "queueWaitMs": 2408,
+          "processMs": 747,
+          "createdAt": "2026-11-10T05:46:28.232Z",
+          "startedAt": "2026-11-10T05:46:30.646Z",
+          "finishedAt": "2026-11-10T05:46:31.393Z"
+        },
+        {
+          "id": "6f5e03f7-a395-44f1-952e-e8383531eb07",
+          "submitMs": 11,
+          "queueWaitMs": 2414,
+          "processMs": 740,
+          "createdAt": "2026-11-10T05:46:28.243Z",
+          "startedAt": "2026-11-10T05:46:30.664Z",
+          "finishedAt": "2026-11-10T05:46:31.404Z"
+        }
+      ]
+    }
+  ],
+  "recovery": [
+    {
+      "trial": 1,
+      "progressAtKill": 23,
+      "killToStalledMs": 30179,
+      "killToResumeMs": 30183,
+      "killToCompletedMs": 30838,
+      "redoMs": 655
+    },
+    {
+      "trial": 2,
+      "progressAtKill": 23,
+      "killToStalledMs": 60202,
+      "killToResumeMs": 60208,
+      "killToCompletedMs": 60866,
+      "redoMs": 658
+    },
+    {
+      "trial": 3,
+      "progressAtKill": 23,
+      "killToStalledMs": 60219,
+      "killToResumeMs": 60221,
+      "killToCompletedMs": 60855,
+      "redoMs": 634
+    }
+  ]
+}

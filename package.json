@@ -21,7 +21,8 @@
     "secrets": "node scripts/check-secrets.mjs",
     "db:validate": "pnpm --filter @queuelab/database exec prisma validate",
     "db:deploy": "pnpm --filter @queuelab/database exec prisma migrate deploy",
-    "test": "pnpm build:packages && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/storage test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test"
+    "test": "pnpm build:packages && pnpm --filter @queuelab/shared-types test && pnpm --filter @queuelab/storage test && pnpm --filter @queuelab/worker test && pnpm --filter @queuelab/api test",
+    "bench": "pnpm --filter @queuelab/database build && pnpm --filter @queuelab/api build && pnpm --filter @queuelab/worker build && pnpm --filter @queuelab/worker exec env NODE_PATH=node_modules tsx ../../scripts/benchmark.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
