@@ -49,7 +49,7 @@ The worker streams `uploads/{id}.csv`. The API may hold a file up to 10 MB while
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
 | M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Done. Live updates, manual retry, and crash recovery work |
-| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication, owner checks, CI, and the Render blueprint are in place. The public services are not created yet |
+| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication, owner checks, and CI are in place. The Render blueprint is about $30 per month and has not been applied |
 
 ## Engineering notes
 

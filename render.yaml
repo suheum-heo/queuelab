@@ -1,23 +1,36 @@
-# Public site, private API, and a separate worker.
-# Uploads and reports use an S3-compatible bucket, not a disk shared by the containers.
-# Render prompts for every sync: false value. The API will not boot until those are set.
-# Set OIDC_REDIRECT_URI to the web service origin plus /api/v1/auth/callback.
-# WEB_ORIGIN is filled from the web service. The issuer must be a real https provider.
+# Applying this file creates paid Render resources. Do not sync it until that bill is accepted.
+# At the published rates this is about $30 per month:
+#   web service on the free plan: $0
+#   private API, 0.5 CPU / 512 MB: $7
+#   background worker, 0.5 CPU / 512 MB: $7
+#   Postgres, 0.1 CPU / 256 MB, 1 GB disk: $6 plus any extra storage
+#   Key Value, 256 MB with disk persistence: $10
+# Private services and background workers have no free plan. A free web service can
+# call the private API, and it sleeps when idle. Free Postgres expires after 30 days
+# and free Key Value drops its data on restart, so those are not used here.
+# Object storage and the OpenID provider are outside Render. Cloudflare R2 has a free
+# tier. Fill the queuelab-production secrets in the dashboard. Do not commit them.
+# After the first deploy, set OIDC_REDIRECT_URI to the web origin plus /api/v1/auth/callback.
 
 services:
   - type: web
     name: queuelab-web
     runtime: docker
+    plan: free
     dockerfilePath: ./infrastructure/Dockerfiles/web.Dockerfile
     dockerContext: .
     healthCheckPath: /
     envVars:
-      - key: API_UPSTREAM
-        value: http://queuelab-api:10000
+      - key: API_HOSTPORT
+        fromService:
+          name: queuelab-api
+          type: pserv
+          property: hostport
 
   - type: pserv
     name: queuelab-api
     runtime: docker
+    plan: 0.5c-512mb
     dockerfilePath: ./infrastructure/Dockerfiles/api.Dockerfile
     dockerContext: .
     preDeployCommand: pnpm --filter @queuelab/database exec prisma migrate deploy
@@ -51,6 +64,7 @@ services:
   - type: worker
     name: queuelab-worker
     runtime: docker
+    plan: 0.5c-512mb
     dockerfilePath: ./infrastructure/Dockerfiles/worker.Dockerfile
     dockerContext: .
     envVars:
@@ -71,12 +85,15 @@ services:
 
   - type: keyvalue
     name: queuelab-redis
+    plan: 256mb
     ipAllowList: []
     maxmemoryPolicy: noeviction
     persistenceMode: journal-snapshot
 
 databases:
   - name: queuelab-db
+    plan: 0.1c-256mb
+    diskSizeGB: 1
     databaseName: queuelab
     ipAllowList: []
 

@@ -100,11 +100,23 @@ pnpm audit --audit-level high
 
 ## Production
 
-`render.yaml` describes the public deployment. The Angular image is the only public HTTPS service. It proxies `/api` and `/socket.io` to a private API, so the session cookie stays on one site. A separate worker process reads the same Redis queue. PostgreSQL and Redis are managed. CSV uploads and JSON reports go to object storage, so a new container still sees the files written by the other.
+`render.yaml` is the public deployment, and it is not applied yet. The Angular image is the only public HTTPS service. Nginx proxies `/api` and `/socket.io` to the private API using Render's `hostport` for that service, so the address is the internal hostname Render assigns rather than a guessed name. A separate worker reads the same Redis queue. PostgreSQL and Key Value are managed. CSV uploads and JSON reports go to object storage.
 
-Production refuses to boot without `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`, and without the https OpenID settings in `.env.example`. `S3_ENDPOINT` is optional and is how an S3-compatible service such as Cloudflare R2 is selected. Leave `S3_BUCKET` empty on a laptop. The local directory is `STORAGE_PATH`.
+Render's free plan covers a public web service, but not a private service or a background worker. Those start at $7 each. The blueprint pins the smallest plans that keep the database and the queue across restarts:
 
-Connecting the GitHub repository to Render picks up `render.yaml`. Render prompts for the issuer, client, redirect, and bucket credentials. Set the redirect to the web service origin plus `/api/v1/auth/callback`. The CLI on this machine can validate the file with `render blueprints validate ./render.yaml`. It is not signed in, so the services are not created yet.
+| Piece | Plan | Monthly |
+| --- | --- | --- |
+| Public web | `free` | $0 |
+| Private API | `0.5c-512mb` | $7 |
+| Worker | `0.5c-512mb` | $7 |
+| Postgres, 1 GB disk | `0.1c-256mb` | $6 |
+| Key Value, persistent | `256mb` | $10 |
+
+That is about $30 per month before any extra database disk. A free Postgres instance expires after 30 days, and a free Key Value instance drops its data on restart. The free web service can call the private API, and it sleeps when nobody is using it.
+
+Production refuses to boot without `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`, and without the https OpenID settings in `.env.example`. For Cloudflare R2 set `S3_REGION` to `auto` and `S3_ENDPOINT` to the account's R2 endpoint. Leave `S3_BUCKET` empty on a laptop. The local directory is `STORAGE_PATH`.
+
+Create the bucket first. Then connect the GitHub repository so Render can read this blueprint, but do not sync it until the monthly total is accepted. The first deploy fails closed until the secrets exist. Copy the web service origin, register that origin plus `/api/v1/auth/callback` on the OpenID provider, and enter the issuer, client, redirect, and bucket credentials in the Render environment group. The sign-in request uses the provider's discovered authorization endpoint, so Google and Auth0 do not have to share a path. The Render CLI on this machine is not signed in.
 
 ## Layout
 

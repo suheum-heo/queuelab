@@ -28,7 +28,7 @@ export class AuthService {
     private readonly dev: DevOidcService,
   ) {}
 
-  begin(returnTo: unknown): { url: string; cookie: string } {
+  async begin(returnTo: unknown): Promise<{ url: string; cookie: string }> {
     const settings = oidcSettings();
     const state = randomBytes(16).toString('base64url');
     const nonce = randomBytes(16).toString('base64url');
@@ -41,7 +41,10 @@ export class AuthService {
       returnTo: safeReturnPath(returnTo),
       exp: Date.now() + 10 * 60_000,
     };
-    const url = new URL(`${settings.issuer}/authorize`);
+    const authorize = settings.dev
+      ? `${settings.issuer}/authorize`
+      : await this.tokens.authorizationEndpoint();
+    const url = new URL(authorize);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', settings.clientId);
     url.searchParams.set('redirect_uri', settings.redirectUri);

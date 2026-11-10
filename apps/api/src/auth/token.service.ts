@@ -8,6 +8,7 @@ import { claimsFromPayload, oidcVerifyOptions, verifyOidcToken } from './verify-
 
 interface Discovery {
   issuer: string;
+  authorization_endpoint: string;
   token_endpoint: string;
   jwks_uri: string;
 }
@@ -42,6 +43,11 @@ export class TokenService {
       if (isTokenRejection(error)) return null;
       throw error;
     }
+  }
+
+  async authorizationEndpoint(): Promise<string> {
+    const discovery = await this.discover(oidcSettings());
+    return discovery.authorization_endpoint;
   }
 
   async tokenEndpoint(): Promise<string> {
@@ -124,9 +130,12 @@ export class TokenService {
     const document = (await response.json()) as Partial<Discovery>;
     const issuer = document.issuer?.replace(/\/$/, '');
     if (issuer !== settings.issuer) throw new Error('OpenID issuer mismatch');
-    if (!document.token_endpoint || !document.jwks_uri) throw new Error('OpenID discovery is incomplete');
+    if (!document.authorization_endpoint || !document.token_endpoint || !document.jwks_uri) {
+      throw new Error('OpenID discovery is incomplete');
+    }
     return {
       issuer: settings.issuer,
+      authorization_endpoint: document.authorization_endpoint,
       token_endpoint: document.token_endpoint,
       jwks_uri: document.jwks_uri,
     };

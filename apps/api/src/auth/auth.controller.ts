@@ -22,14 +22,18 @@ export class AuthController {
   @Get('login')
   @Public()
   @ApiOperation({ summary: 'Start the OpenID authorization-code flow' })
-  login(@Query('return') returnTo: string | undefined, @Req() request: Request, @Res() response: Response): void {
+  async login(
+    @Query('return') returnTo: string | undefined,
+    @Req() request: Request,
+    @Res() response: Response,
+  ): Promise<void> {
     const settings = oidcSettings();
     const host = Array.isArray(request.headers.host) ? request.headers.host[0] : request.headers.host;
     if (settings.dev && !isIsolatedDevHost(host)) {
       response.status(404).type('text').send('Local sign-in is only available from localhost.');
       return;
     }
-    const begun = this.auth.begin(returnTo);
+    const begun = await this.auth.begin(returnTo);
     writeOidcCookie(response, request, begun.cookie);
     response.redirect(begun.url);
   }
