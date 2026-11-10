@@ -13,6 +13,7 @@ import { createPrismaClient, type PrismaClient } from '@queuelab/database';
 import type { CsvAnalysisPayload, JobView } from '@queuelab/shared-types';
 import type { Job } from 'bullmq';
 import { findRepoRoot, storagePath } from '../../../worker/src/env';
+import { accessToken } from '../auth/test-login';
 import { processCsvJob } from '../../../worker/src/process-csv-job';
 
 loadEnv({ path: resolve(__dirname, '../../../../.env') });
@@ -28,6 +29,7 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
   let api: ChildProcess;
   let worker: ChildProcess;
   let base: string;
+  let token = '';
   const storage = storagePath(repo);
 
   before(async () => {
@@ -39,10 +41,16 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
 
     prisma = createPrismaClient(databaseUrl);
     const port = await freePort();
-    base = `http://127.0.0.1:${port}/api/v1`;
+    const origin = `http://127.0.0.1:${port}`;
+    const redirectUri = `${origin}/api/v1/auth/callback`;
+    base = `${origin}/api/v1`;
     const env = {
       ...process.env,
       PORT: String(port),
+      WEB_ORIGIN: origin,
+      OIDC_ISSUER: '',
+      OIDC_CLIENT_ID: 'queuelab',
+      OIDC_REDIRECT_URI: redirectUri,
       CSV_ANALYSIS_QUEUE: process.env.CSV_ANALYSIS_QUEUE,
     };
 
@@ -60,6 +68,10 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
     capture(worker, 'worker');
 
     await waitForHealth(base, () => logs.api);
+    token = await accessToken(origin, {
+      email: process.env.DEMO_USER_EMAIL ?? 'demo@queuelab.dev',
+      redirectUri,
+    });
   });
 
   after(async () => {
@@ -221,19 +233,22 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
   ): Promise<JobView> {
     const uploadBody = new FormData();
     uploadBody.append('file', new File([csv], filename, { type: 'text/csv' }));
-    const uploaded = await fetch(`${base}/uploads`, { method: 'POST', body: uploadBody });
+    const uploaded = await fetch(`${base}/uploads`, withAuth({ method: 'POST', body: uploadBody }));
     const uploadedText = await uploaded.text();
     assert.equal(uploaded.status, 201, uploadedText);
     const upload = JSON.parse(uploadedText) as { id: string };
-    const created = await fetch(`${base}/jobs`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        type: 'CSV_ANALYSIS',
-        fileId: upload.id,
-        options,
+    const created = await fetch(
+      `${base}/jobs`,
+      withAuth({
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'CSV_ANALYSIS',
+          fileId: upload.id,
+          options,
+        }),
       }),
-    });
+    );
     const createdText = await created.text();
     assert.equal(created.status, 202, createdText);
     const job = JSON.parse(createdText) as JobView;
@@ -242,7 +257,7 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
   }
 
   async function retry(id: string): Promise<Response> {
-    return fetch(`${base}/jobs/${id}/retry`, { method: 'POST' });
+    return fetch(`${base}/jobs/${id}/retry`, withAuth({ method: 'POST' }));
   }
 
   async function waitFor(
@@ -253,7 +268,7 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
     const started = Date.now();
     let latest: JobView | undefined;
     while (Date.now() - started < timeoutMs) {
-      const response = await fetch(`${base}/jobs/${id}`);
+      const response = await fetch(`${base}/jobs/${id}`, withAuth());
       latest = (await response.json()) as JobView;
       if (done(latest)) return latest;
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
@@ -274,6 +289,12 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
 
   async function resultCount(id: string): Promise<number> {
     return prisma.jobResult.count({ where: { jobId: id } });
+  }
+
+  function withAuth(init: RequestInit = {}): RequestInit {
+    const headers = new Headers(init.headers);
+    headers.set('authorization', `Bearer ${token}`);
+    return { ...init, headers };
   }
 });
 

@@ -50,6 +50,8 @@ pnpm dev
 - API docs: http://localhost:3000/api/docs
 - Health: http://localhost:3000/api/v1/health
 
+Sign in from the app. With `OIDC_ISSUER` unset, the API serves a local OpenID page and asks for an email. The first sign-in as `demo@queuelab.dev` links the seeded user. Any other email gets an empty ledger. The ID token is stored in an HttpOnly cookie and checked on every API and socket request. Set `OIDC_ISSUER` to a real provider before a public deployment. `NODE_ENV=production` will not boot while that variable is empty.
+
 `pnpm docker:up` starts PostgreSQL and Redis. The API, worker, and Angular run on the host so they can reload. A PostgreSQL 17 and Redis already listening on `localhost:5432` and `localhost:6379` work with the same `.env`. `docker compose -f infrastructure/docker-compose.yml --profile full up --build` runs the API and worker in containers instead.
 
 Seeded jobs are labeled Sample. They are ledger rows only, so their progress does not move. Their reports are generated from the job id because they have no uploaded file. Dispatch a CSV from New job to watch a live run.
@@ -74,7 +76,6 @@ Unit tests cover cursor pagination, row validation, and a streaming parse of a t
 ## Not in this slice
 
 - Cancellation
-- Authentication and owner checks
 - CI, browser end-to-end tests, and deployment
 
 The checklist and the reasons for these choices are in [docs/roadmap.md](docs/roadmap.md).

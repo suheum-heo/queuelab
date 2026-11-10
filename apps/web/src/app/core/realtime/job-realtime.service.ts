@@ -55,11 +55,21 @@ export class JobRealtimeService {
     };
   }
 
+  disconnect(): void {
+    this.socket?.removeAllListeners();
+    this.socket?.disconnect();
+    this.socket = null;
+    this.connected.set(false);
+    this.jobs.clear();
+    this.ledgerListeners = 0;
+  }
+
   private ensure(): void {
     if (this.socket) return;
     this.socket = io({
       path: '/socket.io',
       transports: ['websocket', 'polling'],
+      withCredentials: true,
     });
     this.socket.on('connect', () => {
       this.resubscribe();

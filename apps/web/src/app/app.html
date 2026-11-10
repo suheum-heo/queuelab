@@ -7,12 +7,20 @@
         <small>Dispatch</small>
       </span>
     </a>
-    <nav class="sidebar__nav" aria-label="Primary">
-      <a routerLink="/dashboard" routerLinkActive="is-active">Overview</a>
-      <a routerLink="/jobs" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">Jobs</a>
-      <a routerLink="/jobs/new" routerLinkActive="is-active">New job</a>
-    </nav>
-    <p class="sidebar__note">PostgreSQL keeps the ledger. A socket only says that a row changed.</p>
+    @if (auth.user(); as user) {
+      <nav class="sidebar__nav" aria-label="Primary">
+        <a routerLink="/dashboard" routerLinkActive="is-active">Overview</a>
+        <a routerLink="/jobs" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">Jobs</a>
+        <a routerLink="/jobs/new" routerLinkActive="is-active">New job</a>
+      </nav>
+      <div class="account">
+        <small>{{ user.email }}</small>
+        <button type="button" class="button ghost" (click)="logout()">Sign out</button>
+        <p class="sidebar__note">PostgreSQL keeps the ledger. A socket only says that a row changed.</p>
+      </div>
+    } @else {
+      <p class="sidebar__note">Sign in to see your jobs.</p>
+    }
   </aside>
   <main class="workspace">
     <router-outlet />

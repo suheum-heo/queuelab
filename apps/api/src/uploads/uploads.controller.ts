@@ -8,6 +8,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MAX_UPLOAD_BYTES } from '@queuelab/shared-types';
+import type { AuthUser } from '../auth/auth-user';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { UploadExceptionFilter } from './upload-exception.filter';
 import { UploadsService } from './uploads.service';
 
@@ -35,9 +37,10 @@ export class UploadsController {
     }),
   )
   save(
+    @CurrentUser() user: AuthUser,
     @UploadedFile()
     file: { originalname: string; size: number; buffer: Buffer } | undefined,
   ) {
-    return this.uploads.save(file);
+    return this.uploads.save(file, user.id);
   }
 }

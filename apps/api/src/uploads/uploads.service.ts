@@ -24,7 +24,7 @@ interface UploadBody {
 export class UploadsService {
   constructor(private readonly storage: StorageService) {}
 
-  async save(file: UploadBody | undefined): Promise<StoredUpload> {
+  async save(file: UploadBody | undefined, userId: string): Promise<StoredUpload> {
     if (!file?.buffer) {
       throw new BadRequestException('Choose a CSV file to upload');
     }
@@ -53,6 +53,7 @@ export class UploadsService {
           id,
           filename,
           sizeBytes: file.buffer.length,
+          userId,
           createdAt: new Date().toISOString(),
         }),
       );
@@ -64,19 +65,23 @@ export class UploadsService {
     return { id, filename, sizeBytes: file.buffer.length, key };
   }
 
-  async require(id: string): Promise<StoredUpload> {
+  async require(id: string, userId: string): Promise<StoredUpload> {
     if (!FILE_ID.test(id)) {
       throw new BadRequestException('Invalid file id');
     }
 
     const key = `uploads/${id}.csv`;
-    let meta: { filename?: unknown; sizeBytes?: unknown };
+    let meta: { filename?: unknown; sizeBytes?: unknown; userId?: unknown };
     try {
       meta = JSON.parse((await this.storage.read(`uploads/${id}.json`)).toString('utf8')) as {
         filename?: unknown;
         sizeBytes?: unknown;
+        userId?: unknown;
       };
     } catch {
+      throw new BadRequestException('Upload not found. Send the CSV again.');
+    }
+    if (meta.userId !== userId) {
       throw new BadRequestException('Upload not found. Send the CSV again.');
     }
     if (!(await this.storage.exists(key))) {

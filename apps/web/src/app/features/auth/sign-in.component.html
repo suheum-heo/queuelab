@@ -1,0 +1,11 @@
+<p class="eyebrow">Sign in</p>
+<h1>Your jobs stay yours.</h1>
+<p class="help lead">
+  QueueLab checks the OpenID token on every request. This page only keeps an anonymous visit from opening an empty ledger.
+</p>
+@if (error()) {
+  <p class="banner">{{ error() }}</p>
+}
+<p class="actions">
+  <a class="button" [href]="loginHref">Sign in</a>
+</p>

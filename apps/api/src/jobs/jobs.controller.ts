@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { JobPage, JobResultView, JobView } from '@queuelab/shared-types';
+import type { AuthUser } from '../auth/auth-user';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateJobDto } from './dto/create-job.dto';
 import { ListEventsQueryDto, ListJobsQueryDto } from './dto/list-jobs.query';
 import { JobsService } from './jobs.service';
@@ -25,38 +27,45 @@ export class JobsController {
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Create a job and enqueue it when Redis accepts it' })
   @ApiAcceptedResponse({ description: 'Job is queued, or pending if enqueue failed with 503' })
-  create(@Body() dto: CreateJobDto): Promise<JobView> {
-    return this.jobs.create(dto);
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateJobDto): Promise<JobView> {
+    return this.jobs.create(user, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List jobs, newest first, with cursor pagination' })
-  list(@Query() query: ListJobsQueryDto): Promise<JobPage> {
-    return this.jobs.list(query);
+  @ApiOperation({ summary: 'List the signed-in user\'s jobs, newest first' })
+  list(@CurrentUser() user: AuthUser, @Query() query: ListJobsQueryDto): Promise<JobPage> {
+    return this.jobs.list(user, query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Job detail' })
-  get(@Param('id', ParseUUIDPipe) id: string): Promise<JobView> {
-    return this.jobs.get(id);
+  get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<JobView> {
+    return this.jobs.get(user, id);
   }
 
   @Get(':id/events')
   @ApiOperation({ summary: 'Execution history, oldest first' })
-  events(@Param('id', ParseUUIDPipe) id: string, @Query() query: ListEventsQueryDto) {
-    return this.jobs.events(id, query);
+  events(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListEventsQueryDto,
+  ) {
+    return this.jobs.events(user, id, query);
   }
 
   @Get(':id/result')
   @ApiOperation({ summary: 'Summary metrics for a finished job' })
-  result(@Param('id', ParseUUIDPipe) id: string): Promise<JobResultView> {
-    return this.jobs.result(id);
+  result(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<JobResultView> {
+    return this.jobs.result(user, id);
   }
 
   @Get(':id/download')
   @ApiOperation({ summary: 'Download the JSON report' })
-  async download(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
-    const file = await this.jobs.getReportFile(id);
+  async download(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<StreamableFile> {
+    const file = await this.jobs.getReportFile(user, id);
     return new StreamableFile(file.body, {
       type: 'application/json',
       disposition: `attachment; filename="${file.filename}"`,
@@ -66,7 +75,7 @@ export class JobsController {
   @Post(':id/retry')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Start a new execution of a failed job' })
-  retry(@Param('id', ParseUUIDPipe) id: string): Promise<JobView> {
-    return this.jobs.retry(id);
+  retry(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<JobView> {
+    return this.jobs.retry(user, id);
   }
 }

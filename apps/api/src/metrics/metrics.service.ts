@@ -6,9 +6,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class MetricsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async overview(): Promise<MetricsOverview> {
+  async overview(userId: string): Promise<MetricsOverview> {
     const groups = await this.prisma.job.groupBy({
       by: ['status'],
+      where: { userId },
       _count: { _all: true },
     });
     const count = (status: JobStatus) =>

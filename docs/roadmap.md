@@ -35,7 +35,7 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 
 ## Week 4 — Production polish
 
-- [ ] Add authentication and owner-based authorization
+- [x] Add authentication and owner-based authorization
 - [ ] Write integration and browser end-to-end tests
 - [ ] Configure GitHub Actions CI
 - [ ] Deploy frontend, API, worker, PostgreSQL, and Redis
@@ -48,8 +48,8 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 | --- | --- | --- |
 | M1: API connected | Seeded jobs appear in Angular from PostgreSQL | Done |
 | M2: Processing | An uploaded CSV produces a real summary report | Done |
-| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Live updates, manual retry, and crash recovery work. Authentication and deployment are still open |
-| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Documentation started |
+| M3: Reliability | Jobs can fail, retry, recover, and update the dashboard | Done. Live updates, manual retry, and crash recovery work |
+| M4: Portfolio | Deployed app, automated tests, documentation, and demo | Authentication and owner checks work. CI and deployment are still open |
 
 ## Engineering notes
 
@@ -58,10 +58,10 @@ The worker streams `storage/uploads/{id}.csv`. The API may hold a file up to 10 
 - **Cents, not floats.** Amounts are summed as integer cents and divided at the end, so `10.555` and `2.25` do not drift.
 - **Permanent versus retryable.** `PermanentCsvError` becomes BullMQ `UnrecoverableError`. A missing file is permanent. Other I/O errors are thrown so the attempt budget still applies.
 - **One result row.** The worker writes `results/{jobId}/{executionId}.json` before the database commit, and only if that execution is still current. The commit upserts `JobResult` on `job_id`. A crash before the file leaves the next attempt to read the CSV again. A crash after the file and before the commit leaves that execution's file for the next attempt to overwrite. A crash after the commit returns immediately on the next run. An older execution never writes the newer execution's path.
-- **Pending enqueue is claimed, not scanned twice.** The API reconciler selects executions older than `PENDING_ENQUEUE_MIN_AGE_MS` (15 seconds) and claims the job with `enqueue_claimed_at`. The loser of that update does nothing. Redis is checked for the existing execution id before a second add. The row becomes `QUEUED` only after that check succeeds.
+- **Pending enqueue is claimed, not scanned twice.** The API reconciler selects executions older than `PENDING_ENQUEUE_MIN_AGE_MS` (15 seconds) and claims the job with `enqueue_claimed_at`. The loser of that update does nothing. A claim older than `RECONCILE_CLAIM_LEASE_MS` (20 seconds) can be taken again, including when the API dies after the claim and before Redis accepts the job. Redis is checked for the existing execution id before a second add. The row becomes `QUEUED` only after that check succeeds.
 - **Stalled workers stay inside BullMQ.** Lock duration and the stall check default to 30 seconds. One stall reruns the execution. `BULLMQ_MAX_STALLED_COUNT` defaults to 1, so the next stall fails it and the ledger copies that failure. A queue record that has vanished, or a completion whose result is already stored, is repaired by the same reconciler. It does not invent a second execution.
 - **Job, execution, attempt.** `jobId` is the logical row. `executionId` is one manual run and the BullMQ job id, because a failed queue id cannot be added again. `attempt` is BullMQ's automatic try inside that execution. A conditional update claims a failed job, so two retry requests create one execution. The worker upserts `JobResult` only while its execution is still current.
 - **Transient means the next attempt can succeed.** `demoFailure: transient` throws on attempt 1 only. A broken CSV is `UnrecoverableError` and stops at attempt 1. `exhaust-first-execution` fails every automatic attempt of execution 1 so a manual retry can be tested after the attempt budget is gone.
-- **No auth yet.** The upload id is an unguessable UUID. Owner checks arrive with authentication.
+- **The token is the boundary.** The Angular guard only chooses which page to show. Nest checks the OpenID ID token on every job, upload, metric, and download, and the socket handshake uses that same check. A job room is joined only when `user_id` matches. The ledger room is `user:{id}`, so one visitor does not receive another visitor's notices. The local issuer exists only while `OIDC_ISSUER` is empty.
 - **Sockets notify, PostgreSQL decides.** BullMQ QueueEvents can fire before the ledger write is visible. The worker publishes only after that write commits. The browser throws the notice away and rereads `/jobs/:id`. Reconnect joins the room again and rereads, which covers a laptop that slept through the completion. While the socket is down, the page falls back to a two-second poll. One API process owns the Socket.IO rooms; a second API instance would need a Socket.IO Redis adapter.
 

@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "test": "nest build && tsx --test src/jobs/retry.integration.test.ts src/jobs/recovery.integration.test.ts"
+    "test": "nest build && tsx --test src/auth/auth.integration.test.ts src/jobs/retry.integration.test.ts src/jobs/recovery.integration.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.4.0",
@@ -23,6 +23,7 @@
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.3",
     "ioredis": "^5.8.2",
+    "jose": "4.15.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.4"
@@ -32,6 +33,7 @@
     "@nestjs/schematics": "^12.0.12",
     "@types/express": "^5.0.3",
     "@types/node": "^24.10.0",
+    "socket.io-client": "4.8.4",
     "tsx": "^4.23.15",
     "typescript": "6.0.3"
   }

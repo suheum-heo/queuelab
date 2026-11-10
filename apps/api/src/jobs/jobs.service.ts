@@ -20,6 +20,7 @@ import {
   type JobPage,
   type JobResultView,
 } from '@queuelab/shared-types';
+import type { AuthUser } from '../auth/auth-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { JobUpdatesService } from '../realtime/job-updates.service';
@@ -47,13 +48,12 @@ export class JobsService {
    * A failed enqueue is returned as 503 and is not described as queued.
    * The reconciler later claims the same execution id and tries Redis again.
    */
-  async create(dto: CreateJobDto) {
+  async create(user: AuthUser, dto: CreateJobDto) {
     if (dto.type !== 'CSV_ANALYSIS') {
       throw new BadRequestException('Only CSV_ANALYSIS is supported');
     }
 
-    const user = await this.demoUser();
-    const upload = await this.uploads.require(dto.fileId);
+    const upload = await this.uploads.require(dto.fileId, user.id);
     const options = resolveOptions(dto.options, upload.filename);
     const executionId = randomUUID();
     const job = await this.prisma.job.create({
@@ -136,8 +136,8 @@ export class JobsService {
    * inside one execution and reuse its queue id. The claim is a conditional
    * update, so two overlapping requests cannot both create an execution.
    */
-  async retry(id: string) {
-    const existing = await this.prisma.job.findUnique({ where: { id } });
+  async retry(user: AuthUser, id: string) {
+    const existing = await this.prisma.job.findFirst({ where: { id, userId: user.id } });
     if (!existing) throw new NotFoundException('Job not found');
     if (isSeededJob(existing.options)) {
       throw new BadRequestException('Sample jobs are not queued and cannot be retried.');
@@ -154,7 +154,7 @@ export class JobsService {
     const executionNumber = existing.executionNumber + 1;
     const claimed = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.job.updateMany({
-        where: { id, status: 'FAILED' },
+        where: { id, userId: user.id, status: 'FAILED' },
         data: {
           status: 'PENDING_ENQUEUE',
           progress: 0,
@@ -237,10 +237,11 @@ export class JobsService {
     return presentJob(queued);
   }
 
-  async list(query: ListJobsQueryDto): Promise<JobPage> {
+  async list(user: AuthUser, query: ListJobsQueryDto): Promise<JobPage> {
     const limit = query.limit ?? 20;
     const cursor = this.readCursor(query.cursor);
     const where: Prisma.JobWhereInput = {
+      userId: user.id,
       ...(query.status ? { status: query.status } : {}),
       ...(query.q ? { inputKey: { contains: query.q, mode: 'insensitive' } } : {}),
       ...(cursor
@@ -268,14 +269,14 @@ export class JobsService {
     };
   }
 
-  async get(id: string) {
-    const job = await this.prisma.job.findUnique({ where: { id } });
+  async get(user: AuthUser, id: string) {
+    const job = await this.prisma.job.findFirst({ where: { id, userId: user.id } });
     if (!job) throw new NotFoundException('Job not found');
     return presentJob(job);
   }
 
-  async events(id: string, query: ListEventsQueryDto): Promise<JobEventPage> {
-    await this.get(id);
+  async events(user: AuthUser, id: string, query: ListEventsQueryDto): Promise<JobEventPage> {
+    await this.get(user, id);
     const limit = query.limit ?? 50;
     const cursor = this.readCursor(query.cursor);
     const rows = await this.prisma.jobEvent.findMany({
@@ -310,8 +311,8 @@ export class JobsService {
     };
   }
 
-  async result(id: string): Promise<JobResultView> {
-    await this.get(id);
+  async result(user: AuthUser, id: string): Promise<JobResultView> {
+    await this.get(user, id);
     const result = await this.prisma.jobResult.findUnique({ where: { jobId: id } });
     if (!result) throw new NotFoundException('Result not found');
     return {
@@ -325,9 +326,9 @@ export class JobsService {
     };
   }
 
-  async getReportFile(id: string): Promise<{ filename: string; body: Buffer }> {
-    const job = await this.prisma.job.findUnique({
-      where: { id },
+  async getReportFile(user: AuthUser, id: string): Promise<{ filename: string; body: Buffer }> {
+    const job = await this.prisma.job.findFirst({
+      where: { id, userId: user.id },
       include: { result: true },
     });
     if (!job?.result) throw new NotFoundException('Report not found');
@@ -362,14 +363,6 @@ export class JobsService {
     }
   }
 
-  private demoUser(): Promise<{ id: string }> {
-    const email = process.env.DEMO_USER_EMAIL ?? 'demo@queuelab.dev';
-    return this.prisma.user.upsert({
-      where: { email },
-      update: {},
-      create: { email },
-    });
-  }
 }
 
 const DELIMITERS: Record<string, string> = {
