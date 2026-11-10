@@ -322,6 +322,7 @@ function connect(origin: string, token?: string): Socket {
 }
 
 function once(socket: Socket, event: string): Promise<void> {
+  if (event === 'connect' && socket.connected) return Promise.resolve();
   return new Promise((resolveEvent, reject) => {
     const timer = setTimeout(() => reject(new Error(`timed out waiting for ${event}`)), 10_000);
     socket.once(event, () => {

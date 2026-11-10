@@ -153,7 +153,7 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
       20_000,
     );
     assert.equal(failed.executionNumber, 1);
-    const historyBefore = await eventTypes(job.id);
+    const historyBefore = await waitForEvents(job.id, ['RETRYING', 'FAILED']);
     assert.ok(historyBefore.includes('RETRYING'));
     assert.ok(historyBefore.includes('FAILED'));
 
@@ -277,6 +277,17 @@ describe('manual retry and transient recovery', { concurrency: 1 }, () => {
     throw new Error(
       `Timed out waiting for ${id}. Last status ${latest?.status} attempt ${latest?.attemptsMade} ${latest?.errorMessage ?? ''}\nworker:\n${logs.worker}\napi:\n${logs.api}`,
     );
+  }
+
+  async function waitForEvents(id: string, required: string[]): Promise<string[]> {
+    const started = Date.now();
+    let latest: string[] = [];
+    while (Date.now() - started < 5_000) {
+      latest = await eventTypes(id);
+      if (required.every((type) => latest.includes(type))) return latest;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    }
+    return latest;
   }
 
   async function eventTypes(id: string): Promise<string[]> {
